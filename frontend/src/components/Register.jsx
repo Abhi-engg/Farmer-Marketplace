@@ -1,36 +1,29 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import './styles.css';
 
-const Login = () => {
+const Register = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    userType: 'consumer' // default to consumer
+    confirmPassword: '',
+    userType: 'consumer',
+    name: '',
+    phone: '',
+    address: ''
   });
   const [error, setError] = useState('');
 
-  const handleGoogleLogin = async () => {
-    try {
-      // Get the current hostname (localhost or 127.0.0.1)
-      const hostname = window.location.hostname;
-      const backendUrl = `http://${hostname}:8000`;
-      
-      // Direct redirect to Google OAuth
-      window.location.href = `${backendUrl}/login/google-oauth2/`;
-    } catch (error) {
-      console.error('Login error:', error);
-      setError('Failed to connect to Google login');
-    }
-  };
-
-  const handleEmailLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     try {
       const hostname = window.location.hostname;
-      const backendUrl = `http://${hostname}:8000`;
-      
-      const response = await fetch(`${backendUrl}/api/login/`, {
+      const response = await fetch(`http://${hostname}:8000/api/register/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -40,18 +33,16 @@ const Login = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Invalid credentials');
+        throw new Error('Registration failed');
       }
 
       const data = await response.json();
-      if (data.access) {
-        localStorage.setItem('token', data.access);
-        localStorage.setItem('userType', formData.userType);
-        window.location.href = '/';
+      if (data.success) {
+        window.location.href = '/login';
       }
     } catch (error) {
-      console.error('Login error:', error);
-      setError('Invalid email or password');
+      console.error('Registration error:', error);
+      setError('Registration failed. Please try again.');
     }
   };
 
@@ -66,7 +57,7 @@ const Login = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="text-center text-3xl font-extrabold text-gray-900">
-          Sign in to your account
+          Create your account
         </h2>
       </div>
 
@@ -78,7 +69,21 @@ const Login = () => {
             </div>
           )}
 
-          <form onSubmit={handleEmailLogin} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
+              <input
+                type="text"
+                name="name"
+                required
+                value={formData.name}
+                onChange={handleChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Email address
@@ -109,7 +114,49 @@ const Login = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                I am a
+                Confirm Password
+              </label>
+              <input
+                type="password"
+                name="confirmPassword"
+                required
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                required
+                value={formData.phone}
+                onChange={handleChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Address
+              </label>
+              <textarea
+                name="address"
+                required
+                value={formData.address}
+                onChange={handleChange}
+                rows="3"
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                I want to register as
               </label>
               <select
                 name="userType"
@@ -127,48 +174,18 @@ const Login = () => {
                 type="submit"
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
               >
-                Sign in
+                Register
               </button>
             </div>
           </form>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
-                  Or continue with
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <button
-                onClick={() => {
-                  const hostname = window.location.hostname;
-                  window.location.href = `http://${hostname}:8000/login/google-oauth2/`;
-                }}
-                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-                <img
-                  className="h-5 w-5 mr-2"
-                  src="https://www.svgrepo.com/show/475656/google-color.svg"
-                  alt="Google logo"
-                />
-                Continue with Google
-              </button>
-            </div>
-          </div>
-
           <p className="mt-6 text-center text-sm text-gray-600">
-            Don't have an account?{' '}
+            Already have an account?{' '}
             <Link
-              to="/register"
+              to="/login"
               className="font-medium text-green-600 hover:text-green-500"
             >
-              Register here
+              Sign in
             </Link>
           </p>
         </div>
@@ -177,4 +194,4 @@ const Login = () => {
   );
 };
 
-export default Login; 
+export default Register; 
