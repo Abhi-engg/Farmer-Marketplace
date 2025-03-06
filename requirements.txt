@@ -1,0 +1,4 @@
+Django>=5.1.5
+djangorestframework>=3.14.0
+social-auth-app-django>=5.4.0
+python-social-auth>=0.3.6
