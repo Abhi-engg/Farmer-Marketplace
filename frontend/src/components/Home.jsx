@@ -1,55 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React from 'react';
+import ProductList from './ProductList';
 import './styles.css';
 
 const Home = () => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchUserInfo = async () => {
-      try {
-        const response = await axios.get('http://localhost:8000/api/user/', {
-          withCredentials: true
-        });
-        console.log('User data:', response.data); // Debug log
-        setUser(response.data);
-      } catch (error) {
-        console.error('Error fetching user info:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserInfo();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="container">
-        <div className="home-container">
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="container">
-        <div className="home-container">
-          <p>Error loading user data</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="container">
-      <div className="home-container">
-        <h2 className="welcome-title">Welcome, {user.username}! 👋</h2>
-        <p className="email-text">Email: {user.email}</p>
-        {/* Add any additional user details you want to display */}
+    <div className="container mx-auto px-4">
+      <div className="text-center py-8">
+        <h1 className="text-4xl font-bold text-green-800 mb-4">
+          Welcome to Farmer Marketplace
+        </h1>
+        <p className="text-xl text-gray-600 mb-8">
+          Connect directly with local farmers and get fresh produce delivered to your door
+        </p>
+      </div>
+      
+      <div className="mb-8">
+        <h2 className="text-2xl font-semibold mb-4">Available Products</h2>
+        <ProductList />
       </div>
     </div>
   );
