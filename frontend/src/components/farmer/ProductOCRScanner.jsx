@@ -5,6 +5,7 @@ import { useGeminiAI } from '../../hooks/useGeminiAI';
 const ProductOCRScanner = ({ onProductDetected }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
+  const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
   const { processImageWithGemini } = useGeminiAI();
 
@@ -12,6 +13,18 @@ const ProductOCRScanner = ({ onProductDetected }) => {
     const file = event.target.files[0];
     if (!file) return;
 
+    // Validate file type and size
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file');
+      return;
+    }
+
+    if (file.size > 4 * 1024 * 1024) { // 4MB limit
+      setError('Image size should be less than 4MB');
+      return;
+    }
+
+    setError(null);
     setIsScanning(true);
     try {
       // Create preview
@@ -20,12 +33,25 @@ const ProductOCRScanner = ({ onProductDetected }) => {
 
       // Process image with Gemini AI
       const productData = await processImageWithGemini(file);
-      onProductDetected(productData);
+      
+      if (productData) {
+        onProductDetected(productData);
+      } else {
+        throw new Error('Failed to extract product details');
+      }
     } catch (error) {
       console.error('Error processing image:', error);
-      alert('Failed to process image. Please try again.');
+      setError(error.message || 'Failed to process image. Please try again.');
     } finally {
       setIsScanning(false);
+    }
+  };
+
+  const handleReset = () => {
+    setPreviewImage(null);
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -38,15 +64,40 @@ const ProductOCRScanner = ({ onProductDetected }) => {
         </p>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+          {error}
+        </div>
+      )}
+
       {/* Camera/Upload Interface */}
       <div className="space-y-4">
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+        <div 
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
+            ${error ? 'border-red-300' : 'border-gray-300'}
+            ${isScanning ? 'opacity-50' : 'hover:border-green-500'}`}
+          onClick={() => !isScanning && fileInputRef.current?.click()}
+        >
           {previewImage ? (
-            <img
-              src={previewImage}
-              alt="Preview"
-              className="max-h-64 mx-auto mb-4"
-            />
+            <div className="relative">
+              <img
+                src={previewImage}
+                alt="Preview"
+                className="max-h-64 mx-auto mb-4 rounded-lg"
+              />
+              {isScanning && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                  <div className="text-white text-center">
+                    <svg className="animate-spin h-8 w-8 mx-auto mb-2" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    </svg>
+                    <p>Processing image...</p>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="text-gray-500">
               <svg
@@ -69,6 +120,9 @@ const ProductOCRScanner = ({ onProductDetected }) => {
                 />
               </svg>
               <p>Click to capture or upload an image</p>
+              <p className="text-sm text-gray-400 mt-2">
+                Supported formats: JPG, PNG (max 4MB)
+              </p>
             </div>
           )}
         </div>
@@ -76,7 +130,7 @@ const ProductOCRScanner = ({ onProductDetected }) => {
         <input
           type="file"
           ref={fileInputRef}
-          accept="image/*"
+          accept="image/jpeg,image/png"
           capture="environment"
           onChange={handleImageCapture}
           className="hidden"
@@ -84,19 +138,20 @@ const ProductOCRScanner = ({ onProductDetected }) => {
 
         <div className="flex gap-4">
           <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
+            onClick={() => !isScanning && fileInputRef.current?.click()}
+            className={`flex-1 py-2 rounded-lg text-white
+              ${isScanning 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-green-600 hover:bg-green-700'}`}
             disabled={isScanning}
           >
             {isScanning ? 'Processing...' : 'Take Photo'}
           </button>
           {previewImage && (
             <button
-              onClick={() => {
-                setPreviewImage(null);
-                if (fileInputRef.current) fileInputRef.current.value = '';
-              }}
+              onClick={handleReset}
               className="bg-gray-200 px-4 rounded-lg hover:bg-gray-300"
+              disabled={isScanning}
             >
               Reset
             </button>

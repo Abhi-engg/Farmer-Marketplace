@@ -102,7 +102,7 @@ const Home = () => {
 
           <div className="flex flex-col md:flex-row gap-4 animate-fade-in-delay-2">
             <Button
-              onClick={() => navigate('/products')}
+              onClick={() => navigate('/shop')}
               className="bg-green-600 hover:bg-green-700 text-lg px-8 py-3"
             >
               Browse Products

@@ -8,11 +8,14 @@ import FarmerDashboard from './components/farmer/FarmerDashboard';
 import ProductListings from './components/products/ProductListings';
 import ProductDetails from './components/products/ProductDetails';
 import ShoppingCart from './components/cart/ShoppingCart';
+// Import Shop Components
+import ShopPage from './shop/ShopPage';
+import PropTypes from 'prop-types';
 
 // Create a wrapper component to handle navbar visibility
 const NavbarWrapper = ({ children }) => {
   const location = useLocation();
-  const hideNavbarPaths = ['/farmer/dashboard', '/login'];
+  const hideNavbarPaths = ['/farmer/dashboard', '/login', '/shop']; // Added /shop to hide default navbar
   const shouldShowNavbar = !hideNavbarPaths.includes(location.pathname);
 
   return (
@@ -21,6 +24,10 @@ const NavbarWrapper = ({ children }) => {
       {children}
     </>
   );
+};
+
+NavbarWrapper.propTypes = {
+  children: PropTypes.node.isRequired
 };
 
 function App() {
@@ -81,6 +88,11 @@ function App() {
           <Route 
             path="/cart" 
             element={isAuthenticated ? <ShoppingCart /> : <Navigate to="/login" />} 
+          />
+          {/* Add Shop Routes */}
+          <Route 
+            path="/shop/*" 
+            element={isAuthenticated ? <ShopPage /> : <Navigate to="/login" />} 
           />
         </Routes>
       </NavbarWrapper>
