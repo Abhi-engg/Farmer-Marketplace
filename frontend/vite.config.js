@@ -7,6 +7,9 @@ export default defineConfig({
   plugins: [react(),
     tailwindcss(),
   ],
+  optimizeDeps: {
+    include: ['@google/generative-ai']
+  },
   server: {
     port: 3000, // Set the port to 3000
   },

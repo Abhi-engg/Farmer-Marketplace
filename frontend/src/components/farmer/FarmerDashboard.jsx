@@ -50,7 +50,11 @@ const FarmerDashboard = () => {
       case 'profile':
         return <ProfileManagement farmerData={farmerData} onUpdate={fetchFarmerData} />;
       case 'products':
-        return <ProductManagement />;
+        return (
+          <div className="max-w-6xl mx-auto">
+            <ProductManagement />
+          </div>
+        );
       case 'orders':
         return <OrderManagement />;
       case 'analytics':

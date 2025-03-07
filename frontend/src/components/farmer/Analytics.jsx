@@ -3,8 +3,6 @@ import axios from '../../utils/axios';
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   XAxis,
@@ -29,7 +27,6 @@ const Analytics = () => {
     inventoryTurnover: 0
   });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     fetchAnalytics();

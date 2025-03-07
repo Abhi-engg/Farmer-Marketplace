@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from '../../utils/axios';
+import ProductOCRScanner from './ProductOCRScanner';
 
 const ProductManagement = () => {
   const [products, setProducts] = useState([]);
@@ -31,6 +32,8 @@ const ProductManagement = () => {
       valid_until: null
     }
   });
+  const [showScanner, setShowScanner] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const categories = [
     { id: 'vegetables', label: '🥬 Vegetables' },
@@ -180,15 +183,30 @@ const ProductManagement = () => {
       (selectedCategory === 'all' || product.category === selectedCategory)
     );
 
+  const handleProductDetected = async (productData) => {
+    setIsLoading(true);
+    try {
+      // Add the detected product to your products list
+      const response = await axios.post('/api/farmer/products/', productData);
+      setProducts([...products, response.data]);
+      setShowScanner(false);
+    } catch (error) {
+      console.error('Error adding product:', error);
+      alert('Failed to add product. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold">Product Management</h2>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => setShowScanner(!showScanner)}
           className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
         >
-          + Add New Product
+          {showScanner ? 'Close Scanner' : '📸 Add Product with Scanner'}
         </button>
       </div>
 
@@ -407,6 +425,14 @@ const ProductManagement = () => {
         </div>
       )}
 
+      {showScanner && (
+        <div className="bg-white rounded-lg shadow-md">
+          <ProductOCRScanner 
+            onProductDetected={handleProductDetected}
+          />
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
@@ -471,6 +497,14 @@ const ProductManagement = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg">
+            <p className="text-lg">Processing product...</p>
+          </div>
         </div>
       )}
     </div>

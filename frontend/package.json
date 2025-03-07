@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.0",
     "@heroicons/react": "^2.2.0",
     "@tailwindcss/vite": "^4.0.11",
     "@tanstack/react-query": "^5.67.1",
@@ -21,6 +22,7 @@
     "react-hot-toast": "^2.4.1",
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.30.0",
+    "recharts": "^2.15.1",
     "tailwindcss": "^4.0.11"
   },
   "devDependencies": {
