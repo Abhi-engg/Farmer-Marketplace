@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { ArrowRight, Leaf, Users, TrendingUp, Truck, Shield, Heart } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import axios from '../utils/axios';
 import Button from './ui/Button';
@@ -8,6 +9,17 @@ import Card from './ui/Card';
 import Input from './ui/Input';
 import Spinner from './ui/Spinner';
 import SectionHeader from './ui/SectionHeader';
+import L from 'leaflet';
+
+// Custom marker icon
+const customIcon = L.icon({
+  iconUrl: '/images/marker-icon.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowUrl: '/images/marker-shadow.png',
+  shadowSize: [41, 41]
+});
 
 const Home = () => {
   const navigate = useNavigate();
@@ -16,11 +28,11 @@ const Home = () => {
   const [farmers, setFarmers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
-  const [activeCategory, setActiveCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchHomeData();
+    fetchFarmerLocations();
   }, []);
 
   const fetchHomeData = async () => {
@@ -40,9 +52,20 @@ const Home = () => {
     }
   };
 
+  const fetchFarmerLocations = async () => {
+    try {
+      const response = await axios.get('/api/farmers/locations/');
+      setFarmers(response.data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching farmer locations:', error);
+      setLoading(false);
+    }
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
-    navigate(`/products?search=${searchQuery}`);
+    navigate(`/shop?search=${searchQuery}`);
   };
 
   const handleSubscribe = async (e) => {
@@ -65,249 +88,79 @@ const Home = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hero Section with Search */}
-      <section className="relative h-[calc(100vh-80px)] w-full overflow-hidden">
+    <div className="min-h-screen">
+      {/* Hero Section */}
+      <section className="relative h-screen flex items-center">
+        <div className="absolute inset-0 bg-gradient-to-r from-green-600/90 to-emerald-600/90">
+          <div className="absolute inset-0 bg-black/40" />
+        </div>
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{ 
-            backgroundImage: "url('public/images/Backgroundimage.jpg')",
-            transform: "translateZ(-1px) scale(2)"
+            backgroundImage: "url('/images/hero-bg.jpg')",
+            zIndex: -1
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-black/40" />
-        <div className="relative h-full flex flex-col justify-center items-center text-white px-4">
-          <h1 className="text-5xl md:text-7xl font-bold text-center mb-6 max-w-5xl animate-fade-in">
-            Fresh from Local Farmers
+        <div className="container mx-auto px-4 relative z-10 text-white">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+            Fresh from Farm <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-emerald-300">
+              Direct to Your Table
+            </span>
           </h1>
-          <p className="text-xl md:text-2xl text-center mb-12 max-w-2xl animate-fade-in-delay">
-            Support local farmers and get fresh produce delivered to your doorstep
+          <p className="text-xl md:text-2xl mb-8 max-w-2xl text-gray-200">
+            Connecting farmers directly with consumers. No middlemen, just fresh, local produce at fair prices.
           </p>
-          
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="w-full max-w-2xl mb-8 animate-fade-in-delay">
-            <div className="flex gap-2">
-              <Input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search for fresh produce..."
-                className="bg-white/90 backdrop-blur-sm text-gray-800"
-              />
-              <Button type="submit" className="bg-green-600 hover:bg-green-700">
-                Search
-              </Button>
-            </div>
-          </form>
-
-          <div className="flex flex-col md:flex-row gap-4 animate-fade-in-delay-2">
-            <Button
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
               onClick={() => navigate('/shop')}
-              className="bg-green-600 hover:bg-green-700 text-lg px-8 py-3"
+              className="px-8 py-4 bg-white text-green-600 rounded-full font-semibold
+                hover:bg-green-50 transition-all duration-300 text-lg
+                flex items-center justify-center group"
             >
-              Browse Products
-            </Button>
-            <Button
+              Start Shopping
+              <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+            </button>
+            <button
               onClick={() => navigate('/farmer/dashboard')}
-              variant="secondary"
-              className="bg-white text-green-600 hover:bg-green-50 text-lg px-8 py-3"
+              className="px-8 py-4 bg-transparent border-2 border-white rounded-full
+                font-semibold hover:bg-white/10 transition-all duration-300 text-lg"
             >
-              Sell as Farmer
-            </Button>
+              Become a Seller
+            </button>
           </div>
         </div>
       </section>
 
-      {/* Categories Section */}
-      <section className="py-16 bg-white">
+      {/* Features Section */}
+      <section className="py-20 bg-white">
         <div className="container mx-auto px-4">
-          <SectionHeader 
-            title="Browse Categories" 
-            subtitle="Find what you need"
-          />
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {categories.map((category) => (
-              <Card
-                key={category.id}
-                className={`
-                  cursor-pointer transform transition-all duration-300
-                  ${activeCategory === category.id ? 'ring-2 ring-green-500 scale-105' : 'hover:scale-105'}
-                `}
-                onClick={() => {
-                  setActiveCategory(category.id);
-                  navigate(`/products?category=${category.slug}`);
-                }}
-              >
-                <div className="p-4 text-center">
-                  <div className="w-16 h-16 mx-auto mb-3">
-                    <img
-                      src={category.icon}
-                      alt={category.name}
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  <h3 className="font-medium text-gray-800">{category.name}</h3>
-                  <p className="text-sm text-gray-500 mt-1">{category.product_count} items</p>
-                </div>
-              </Card>
-            ))}
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4">Why Choose Us?</h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              We're revolutionizing the agricultural marketplace by connecting farmers directly with consumers
+            </p>
           </div>
-        </div>
-      </section>
-
-      {/* Featured Products */}
-      <section className="py-16 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <SectionHeader 
-            title="Featured Products" 
-            subtitle="Hand-picked fresh items"
-            action={
-              <Button
-                onClick={() => navigate('/products')}
-                variant="outline"
-                className="hidden md:block"
-              >
-                View All
-              </Button>
-            }
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {featuredProducts.map((product) => (
-              <Link 
-                key={product.id}
-                to={`/products/${product.id}`}
-                className="transform transition-all duration-300 hover:scale-105"
-              >
-                <Card>
-                  <div className="relative">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-full h-48 object-cover"
-                    />
-                    {product.discount > 0 && (
-                      <span className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-sm">
-                        -{product.discount}%
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-medium text-gray-800 mb-2">{product.name}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{product.farmer_name}</p>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="text-green-600 font-bold">${product.price}</span>
-                        {product.original_price && (
-                          <span className="text-sm text-gray-400 line-through">
-                            ${product.original_price}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center text-yellow-400">
-                        <span>★</span>
-                        <span className="ml-1 text-sm text-gray-600">{product.rating}</span>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              </Link>
-            ))}
-          </div>
-          <div className="mt-8 text-center md:hidden">
-            <Button
-              onClick={() => navigate('/products')}
-              variant="outline"
-            >
-              View All Products
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Map Section */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <SectionHeader 
-            title="Find Local Markets" 
-            subtitle="Discover farmers near you"
-          />
-          <div className="h-[600px] rounded-xl overflow-hidden shadow-xl">
-            <MapContainer 
-              center={[51.505, -0.09]} 
-              zoom={13} 
-              className="h-full w-full"
-              scrollWheelZoom={false}
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              />
-              {farmers.map((farmer) => (
-                <Marker key={farmer.id} position={[farmer.lat, farmer.lng]}>
-                  <Popup>
-                    <div className="p-2">
-                      <h3 className="font-medium">{farmer.name}</h3>
-                      <p className="text-sm text-gray-600">{farmer.farm}</p>
-                      <Link 
-                        to={`/farmer/${farmer.id}`}
-                        className="text-green-600 hover:text-green-700 text-sm mt-2 block"
-                      >
-                        View Profile →
-                      </Link>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
-          </div>
-        </div>
-      </section>
-
-      {/* Why Choose Us Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <SectionHeader 
-            title="Why Choose Us" 
-            subtitle="The benefits of shopping with local farmers"
-            className="text-center"
-          />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                icon: "M12 6v6m0 0v6m0-6h6m-6 0H6",
-                title: "Fresh & Local",
-                description: "Direct from local farms to your table within 24 hours"
+                icon: <Users className="w-12 h-12 text-green-600" />,
+                title: "Direct Connection",
+                description: "Connect directly with local farmers, eliminating middlemen and reducing costs"
               },
               {
-                icon: "M9 12l2 2 4-4",
-                title: "Quality Guaranteed",
-                description: "All products are carefully selected and quality-checked"
+                icon: <Leaf className="w-12 h-12 text-green-600" />,
+                title: "Fresh Produce",
+                description: "Get fresh, seasonal produce directly from farms to your doorstep"
               },
               {
-                icon: "M13 10V3L4 14h7v7l9-11h-7z",
-                title: "Fast Delivery",
-                description: "Same-day delivery available for orders before 2 PM"
+                icon: <TrendingUp className="w-12 h-12 text-green-600" />,
+                title: "Fair Prices",
+                description: "Better prices for both farmers and consumers through direct trade"
               }
             ].map((feature, index) => (
-              <div 
-                key={index}
-                className="bg-white rounded-lg p-6 text-center transform hover:scale-105 transition-transform duration-300"
-              >
-                <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-                  <svg 
-                    className="w-8 h-8 text-green-600" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d={feature.icon}
-                    />
-                  </svg>
-                </div>
+              <div key={index} className="p-8 rounded-2xl bg-white shadow-lg hover:shadow-xl transition-shadow">
+                <div className="mb-4">{feature.icon}</div>
                 <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
                 <p className="text-gray-600">{feature.description}</p>
               </div>
@@ -316,27 +169,228 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Newsletter Section */}
-      <section className="py-16 bg-green-50">
+      {/* How It Works */}
+      <section className="py-20 bg-gradient-to-r from-green-50 to-emerald-50">
         <div className="container mx-auto px-4">
-          <SectionHeader 
-            title="Stay Updated" 
-            subtitle="Get exclusive offers and updates!"
-            className="text-center"
-          />
-          <form onSubmit={handleSubscribe} className="max-w-3xl mx-auto flex gap-4">
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              className="flex-1"
-              required
-            />
-            <Button type="submit">
-              Subscribe
-            </Button>
-          </form>
+          <h2 className="text-4xl font-bold text-center mb-16">How It Works</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            {[
+              { number: "01", title: "Browse", description: "Explore fresh produce from local farmers" },
+              { number: "02", title: "Select", description: "Choose your favorite products" },
+              { number: "03", title: "Order", description: "Place your order with secure payment" },
+              { number: "04", title: "Receive", description: "Get fresh delivery to your doorstep" }
+            ].map((step, index) => (
+              <div key={index} className="text-center">
+                <div className="w-16 h-16 rounded-full bg-green-600 text-white flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                  {step.number}
+                </div>
+                <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
+                <p className="text-gray-600">{step.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Benefits Section */}
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+            <div>
+              <h2 className="text-4xl font-bold mb-6">Benefits for Everyone</h2>
+              <div className="space-y-6">
+                {[
+                  { icon: <Leaf />, title: "For Farmers", points: ["Better profit margins", "Direct market access", "Customer insights"] },
+                  { icon: <Heart />, title: "For Consumers", points: ["Fresh produce", "Better prices", "Support local farmers"] }
+                ].map((benefit, index) => (
+                  <div key={index} className="flex gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                      {benefit.icon}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold mb-2">{benefit.title}</h3>
+                      <ul className="space-y-2">
+                        {benefit.points.map((point, i) => (
+                          <li key={i} className="flex items-center gap-2 text-gray-600">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-600" />
+                            {point}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="relative">
+              <img 
+                src="/images/benefits.jpg" 
+                alt="Benefits" 
+                className="rounded-2xl shadow-xl"
+              />
+              <div className="absolute -bottom-6 -right-6 bg-white p-6 rounded-xl shadow-lg">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                    <TrendingUp />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Average Savings</p>
+                    <p className="text-2xl font-bold text-green-600">25%</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Farmer Network */}
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4">Our Farmer Network</h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Discover local farmers in your area and connect directly with them
+            </p>
+          </div>
+          
+          <div className="relative h-[600px] rounded-2xl overflow-hidden shadow-xl">
+            {loading ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-500 border-t-transparent"></div>
+              </div>
+            ) : (
+              <MapContainer 
+                center={[20.5937, 78.9629]} // Center of India
+                zoom={5} 
+                className="h-full w-full"
+                scrollWheelZoom={false}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                
+                {farmers.map((farmer) => (
+                  <Marker
+                    key={farmer.id}
+                    position={[farmer.latitude, farmer.longitude]}
+                    icon={customIcon}
+                  >
+                    <Popup>
+                      <div className="p-2">
+                        <h3 className="font-semibold text-lg text-green-600">
+                          {farmer.farm_name}
+                        </h3>
+                        <p className="text-gray-600">{farmer.name}</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {farmer.location}
+                        </p>
+                        <div className="mt-2 flex gap-2">
+                          <span className="px-2 py-1 bg-green-100 text-green-600 text-xs rounded-full">
+                            {farmer.products_count} Products
+                          </span>
+                          <span className="px-2 py-1 bg-blue-100 text-blue-600 text-xs rounded-full">
+                            {farmer.rating} ★
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/farmer/${farmer.id}`)}
+                          className="mt-3 w-full px-3 py-1.5 bg-green-600 text-white rounded-lg
+                            text-sm hover:bg-green-700 transition-colors"
+                        >
+                          View Profile
+                        </button>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+
+                {/* Region Highlights */}
+                <div className="absolute bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg z-[1000]">
+                  <h4 className="font-semibold text-green-600 mb-2">Regions</h4>
+                  <div className="space-y-1">
+                    {farmers.reduce((acc, farmer) => {
+                      if (!acc.includes(farmer.region)) {
+                        acc.push(farmer.region);
+                      }
+                      return acc;
+                    }, []).map((region) => (
+                      <div key={region} className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span className="text-sm text-gray-600">{region}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </MapContainer>
+            )}
+
+            {/* Map Stats */}
+            <div className="absolute top-4 left-4 bg-white p-4 rounded-lg shadow-lg z-[1000]">
+              <div className="space-y-2">
+                <div>
+                  <p className="text-sm text-gray-500">Total Farmers</p>
+                  <p className="text-2xl font-bold text-green-600">{farmers.length}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Active Regions</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {new Set(farmers.map(f => f.region)).size}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Indicators */}
+      <section className="py-16 bg-gradient-to-r from-green-600 to-emerald-600 text-white">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { icon: <Shield />, title: "Secure Payments", description: "100% secure transaction" },
+              { icon: <Truck />, title: "Fast Delivery", description: "Same day delivery available" },
+              { icon: <Users />, title: "Verified Farmers", description: "All farmers are verified" }
+            ].map((item, index) => (
+              <div key={index} className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                  {item.icon}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">{item.title}</h3>
+                  <p className="text-green-100">{item.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-4xl font-bold mb-6">Ready to Get Started?</h2>
+          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            Join our community of farmers and consumers. Start buying or selling fresh produce today.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => navigate('/shop')}
+              className="px-8 py-4 bg-green-600 text-white rounded-full font-semibold
+                hover:bg-green-700 transition-all duration-300 text-lg"
+            >
+              Start Shopping
+            </button>
+            <button
+              onClick={() => navigate('/farmer/register')}
+              className="px-8 py-4 bg-white text-green-600 border-2 border-green-600 rounded-full
+                font-semibold hover:bg-green-50 transition-all duration-300 text-lg"
+            >
+              Become a Seller
+            </button>
+          </div>
         </div>
       </section>
     </div>

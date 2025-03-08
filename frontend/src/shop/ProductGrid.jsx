@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types';
 import { useState } from 'react';
 import { Star, ShoppingCart } from 'lucide-react';
 
@@ -608,11 +607,6 @@ const ProductGrid = ({ selectedCategory, onAddToCart }) => {
       )}
     </div>
   );
-};
-
-ProductGrid.propTypes = {
-  selectedCategory: PropTypes.string.isRequired,
-  onAddToCart: PropTypes.func.isRequired
 };
 
 export default ProductGrid;
