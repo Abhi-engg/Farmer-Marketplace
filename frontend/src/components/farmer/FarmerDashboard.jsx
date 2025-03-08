@@ -65,18 +65,18 @@ const FarmerDashboard = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gradient-to-br from-green-50 to-emerald-50">
       {/* Sidebar */}
-      <div className={`bg-white shadow-lg transition-all duration-300 ${
-        isSidebarCollapsed ? 'w-16' : 'w-64'
+      <div className={`bg-white shadow-xl transition-all duration-300 border-r border-green-100 ${
+        isSidebarCollapsed ? 'w-20' : 'w-72'
       }`}>
-        <div className="p-4 border-b flex justify-between items-center">
-          <h1 className={`font-bold text-green-800 ${isSidebarCollapsed ? 'hidden' : 'block'}`}>
-            Farmer Dashboard
+        <div className="p-6 border-b border-green-100 flex justify-between items-center">
+          <h1 className={`font-bold text-emerald-800 text-xl ${isSidebarCollapsed ? 'hidden' : 'block'}`}>
+            🌾 Farm Central
           </h1>
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="text-gray-500 hover:text-gray-700"
+            className="p-2 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors"
           >
             {isSidebarCollapsed ? '➡️' : '⬅️'}
           </button>
@@ -87,13 +87,13 @@ const FarmerDashboard = () => {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center space-x-3 p-3 rounded-lg mb-2 transition-colors ${
+              className={`w-full flex items-center space-x-4 p-4 rounded-xl mb-2 transition-all duration-200 ${
                 activeTab === item.id
-                  ? 'bg-green-100 text-green-800'
-                  : 'hover:bg-gray-100'
+                  ? 'bg-emerald-100 text-emerald-800 shadow-sm font-medium'
+                  : 'hover:bg-emerald-50 text-gray-600 hover:text-emerald-700'
               }`}
             >
-              <span>{item.icon}</span>
+              <span className="text-xl">{item.icon}</span>
               {!isSidebarCollapsed && <span>{item.label}</span>}
             </button>
           ))}
@@ -103,44 +103,52 @@ const FarmerDashboard = () => {
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
         {/* Top Navigation */}
-        <div className="bg-white shadow-sm p-4 flex justify-between items-center">
-          <div className="flex items-center space-x-4">
-            <input
-              type="text"
-              placeholder="🔍 Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="border rounded-lg px-4 py-2 w-64"
-            />
-          </div>
-          
+        <div className="bg-white shadow-sm p-6 flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <div className="relative">
-              <button className="p-2 hover:bg-gray-100 rounded-full">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="border border-gray-200 rounded-xl px-5 py-3 w-72 pr-12 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-6">
+            <div className="relative">
+              <button className="p-3 hover:bg-emerald-50 rounded-xl transition-colors relative">
                 🔔
                 {notifications.length > 0 && (
-                  <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                  <span className="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                     {notifications.length}
                   </span>
                 )}
               </button>
             </div>
             {farmerData && (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-3 bg-emerald-50 rounded-xl p-2 pr-4">
                 <img
                   src={farmerData.profile_image || '/default-avatar.png'}
                   alt="Profile"
-                  className="w-8 h-8 rounded-full object-cover"
+                  className="w-10 h-10 rounded-lg object-cover border-2 border-emerald-200"
                 />
-                <span className="font-medium">{farmerData.farm_name}</span>
+                <div className="flex flex-col">
+                  <span className="font-medium text-emerald-900">{farmerData.farm_name}</span>
+                  <span className="text-sm text-emerald-600">Online</span>
+                </div>
               </div>
             )}
           </div>
         </div>
 
         {/* Content Area */}
-        <div className="p-6">
-          {renderContent()}
+        <div className="p-8">
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            {renderContent()}
+          </div>
         </div>
       </div>
     </div>

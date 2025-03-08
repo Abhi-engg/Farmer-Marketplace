@@ -58,43 +58,34 @@ const Analytics = () => {
   };
 
   const renderOverviewCards = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-gray-600 text-sm mb-2">Total Sales</h3>
-        <p className="text-2xl font-bold text-green-600">
-          {formatCurrency(analytics.totalSales)}
-        </p>
-        <p className="text-sm text-gray-500 mt-2">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl p-6 text-white">
+        <h4 className="text-emerald-100">Total Revenue</h4>
+        <p className="text-3xl font-bold mt-2">{formatCurrency(analytics.totalSales)}</p>
+        <span className="text-emerald-100 text-sm">
           {analytics.growthRate > 0 ? '↗️' : '↘️'} {formatPercentage(Math.abs(analytics.growthRate))} vs last period
-        </p>
+        </span>
       </div>
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-gray-600 text-sm mb-2">Total Orders</h3>
-        <p className="text-2xl font-bold text-blue-600">{analytics.totalOrders}</p>
-        <p className="text-sm text-gray-500 mt-2">
+      
+      <div className="bg-white rounded-xl p-6 border border-emerald-100">
+        <h4 className="text-emerald-800">Total Orders</h4>
+        <p className="text-3xl font-bold text-emerald-600 mt-2">{analytics.totalOrders}</p>
+        <span className="text-emerald-600 text-sm">
           Average {formatCurrency(analytics.averageOrderValue)} per order
-        </p>
+        </span>
       </div>
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-gray-600 text-sm mb-2">Customer Retention</h3>
-        <p className="text-2xl font-bold text-purple-600">
-          {formatPercentage(analytics.customerRetention)}
-        </p>
-        <p className="text-sm text-gray-500 mt-2">Returning customers</p>
-      </div>
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-gray-600 text-sm mb-2">Inventory Turnover</h3>
-        <p className="text-2xl font-bold text-orange-600">
-          {analytics.inventoryTurnover.toFixed(1)}x
-        </p>
-        <p className="text-sm text-gray-500 mt-2">Stock rotation rate</p>
+
+      <div className="bg-white rounded-xl p-6 border border-emerald-100">
+        <h4 className="text-emerald-800">Active Products</h4>
+        <p className="text-3xl font-bold text-emerald-600 mt-2">{analytics.topProducts.length}</p>
+        <span className="text-emerald-600 text-sm">+{analytics.topProducts.length - 45} new this month</span>
       </div>
     </div>
   );
 
   const renderSalesChart = () => (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-      <h3 className="text-lg font-semibold mb-4">Sales Trend</h3>
+    <div className="bg-white rounded-xl p-6 border border-emerald-100">
+      <h4 className="text-lg font-semibold text-emerald-800 mb-4">Sales Overview</h4>
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={analytics.salesByDay}>
@@ -117,8 +108,8 @@ const Analytics = () => {
   );
 
   const renderTopProducts = () => (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-      <h3 className="text-lg font-semibold mb-4">Top Products</h3>
+    <div className="bg-white rounded-xl p-6 border border-emerald-100">
+      <h4 className="text-lg font-semibold text-emerald-800 mb-4">Top Products</h4>
       <div className="space-y-4">
         {analytics.topProducts.map((product) => (
           <div
@@ -151,8 +142,8 @@ const Analytics = () => {
   );
 
   const renderCategoryDistribution = () => (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h3 className="text-lg font-semibold mb-4">Category Distribution</h3>
+    <div className="bg-white rounded-xl p-6 border border-emerald-100">
+      <h4 className="text-lg font-semibold text-emerald-800 mb-4">Category Distribution</h4>
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -183,33 +174,20 @@ const Analytics = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold">Analytics Dashboard</h2>
-        <select
-          value={timeFrame}
-          onChange={(e) => setTimeFrame(e.target.value)}
-          className="border rounded-lg px-3 py-2"
-        >
-          <option value="week">Last 7 Days</option>
-          <option value="month">Last 30 Days</option>
-          <option value="quarter">Last Quarter</option>
-          <option value="year">Last Year</option>
-        </select>
+      <h2 className="text-3xl font-bold text-emerald-800 mb-8">Analytics</h2>
+
+      {/* Analytics Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {renderOverviewCards()}
       </div>
 
-      <div className="space-y-6">
-        {/* Overview Cards */}
-        {renderOverviewCards()}
-
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {renderSalesChart()}
-          {renderCategoryDistribution()}
-        </div>
-
-        {/* Top Products */}
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {renderSalesChart()}
         {renderTopProducts()}
       </div>
+
+      {renderCategoryDistribution()}
     </div>
   );
 };
