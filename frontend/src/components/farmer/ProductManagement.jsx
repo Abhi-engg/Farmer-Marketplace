@@ -67,7 +67,15 @@ const ProductManagement = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      setProducts(sampleProducts);
+      // First try to get products from localStorage
+      const savedProducts = localStorage.getItem('farmerProducts');
+      if (savedProducts) {
+        setProducts(JSON.parse(savedProducts));
+      } else {
+        // If no saved products, use sample data
+        setProducts(sampleProducts);
+        localStorage.setItem('farmerProducts', JSON.stringify(sampleProducts));
+      }
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -77,12 +85,14 @@ const ProductManagement = () => {
 
   const handleCreateProduct = async (newProduct) => {
     try {
-      // For testing, simulate API call
       const createdProduct = {
         ...newProduct,
-        id: products.length + 1, // Simple ID generation for testing
+        id: Date.now(), // Use timestamp as ID
+        published: false // Add published status
       };
-      setProducts([...products, createdProduct]);
+      const updatedProducts = [...products, createdProduct];
+      setProducts(updatedProducts);
+      localStorage.setItem('farmerProducts', JSON.stringify(updatedProducts));
     } catch (error) {
       console.error('Error creating product:', error);
     }
@@ -90,10 +100,11 @@ const ProductManagement = () => {
 
   const handleProductUpdate = async (updatedProduct) => {
     try {
-      // For testing, update locally
-      setProducts(products.map(p => 
+      const updatedProducts = products.map(p => 
         p.id === updatedProduct.id ? updatedProduct : p
-      ));
+      );
+      setProducts(updatedProducts);
+      localStorage.setItem('farmerProducts', JSON.stringify(updatedProducts));
     } catch (error) {
       console.error('Error updating product:', error);
     }
@@ -102,11 +113,24 @@ const ProductManagement = () => {
   const handleProductDelete = async (productId) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
-        // For testing, delete locally
-        setProducts(products.filter(p => p.id !== productId));
+        const updatedProducts = products.filter(p => p.id !== productId);
+        setProducts(updatedProducts);
+        localStorage.setItem('farmerProducts', JSON.stringify(updatedProducts));
       } catch (error) {
         console.error('Error deleting product:', error);
       }
+    }
+  };
+
+  const handlePublishToggle = async (productId) => {
+    try {
+      const updatedProducts = products.map(p => 
+        p.id === productId ? { ...p, published: !p.published } : p
+      );
+      setProducts(updatedProducts);
+      localStorage.setItem('farmerProducts', JSON.stringify(updatedProducts));
+    } catch (error) {
+      console.error('Error toggling publish status:', error);
     }
   };
 
@@ -153,6 +177,27 @@ const ProductManagement = () => {
         product.category.toLowerCase() === selectedCategory.toLowerCase();
       return matchesSearch && matchesCategory;
     })
+  );
+
+  const renderProductCard = (product) => (
+    <div key={product.id} className="relative">
+      <FarmerProductCard
+        product={product}
+        onUpdate={handleProductUpdate}
+        onDelete={handleProductDelete}
+        onImageUpload={(file) => handleImageUpload(file, product.id)}
+      />
+      <button
+        onClick={() => handlePublishToggle(product.id)}
+        className={`absolute top-2 right-2 px-3 py-1 rounded-full text-sm font-medium ${
+          product.published 
+            ? 'bg-emerald-100 text-emerald-800'
+            : 'bg-gray-100 text-gray-800'
+        }`}
+      >
+        {product.published ? 'Published' : 'Draft'}
+      </button>
+    </div>
   );
 
   return (
@@ -239,15 +284,7 @@ const ProductManagement = () => {
               isNew={true}
               onCreate={handleCreateProduct}
             />
-            {filteredProducts.map(product => (
-              <FarmerProductCard
-                key={product.id}
-                product={product}
-                onUpdate={handleProductUpdate}
-                onDelete={handleProductDelete}
-                onImageUpload={(file) => handleImageUpload(file, product.id)}
-              />
-            ))}
+            {filteredProducts.map(renderProductCard)}
           </div>
         )}
 
