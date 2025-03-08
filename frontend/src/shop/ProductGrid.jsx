@@ -1,8 +1,21 @@
-import { useState } from 'react';
-import { Star, ShoppingCart } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Star, ShoppingCart, Heart, Share2, QrCode } from 'lucide-react';
 
-const products = [
-  // Vegetables Category
+const ProductGrid = ({ 
+  selectedCategory = 'All', 
+  onAddToCart, 
+  searchQuery = '', 
+  sortBy = 'relevance',
+  isManagement = false, 
+  onEdit, 
+  onDelete 
+}) => {
+  const [hoveredProduct, setHoveredProduct] = useState(null);
+  const [wishlist, setWishlist] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+
+  const products = [
+    // Vegetables Category
   {
     id: 1,
     name: "Fresh Red Tomatoes",
@@ -10,7 +23,7 @@ const products = [
     unit: "kg",
     rating: 4.5,
     reviews: 128,
-    image: "/images/products/tomatoes.jpg",
+    image: "/images/tomatos.jpg",
     farmer: "Krishna Farms",
     location: "Nashik, Maharashtra",
     category: "Vegetables"
@@ -22,7 +35,7 @@ const products = [
     unit: "kg",
     rating: 4.4,
     reviews: 112,
-    image: "/images/products/potatoes.jpg",
+    image: "/images/potatos.jpg",
     farmer: "Himachal Farms",
     location: "Shimla, Himachal Pradesh",
     category: "Vegetables"
@@ -34,7 +47,7 @@ const products = [
     unit: "kg",
     rating: 4.3,
     reviews: 98,
-    image: "/images/products/onions.jpg",
+    image: "/images/FreshOnions.jpg",
     farmer: "Maharashtra Farmers Co-op",
     location: "Lasalgaon, Maharashtra",
     category: "Vegetables"
@@ -48,7 +61,7 @@ const products = [
     unit: "dozen",
     rating: 4.6,
     reviews: 145,
-    image: "/images/products/bananas.jpg",
+    image: "/images/banana.jpg",
     farmer: "Karnataka Fruit Farm",
     location: "Mysore, Karnataka",
     category: "Fruits"
@@ -60,7 +73,7 @@ const products = [
     unit: "kg",
     rating: 4.7,
     reviews: 167,
-    image: "/images/products/pomegranate.jpg",
+    image: "/images/freshpomegranate.jpg",
     farmer: "Maharashtra Fruit Co-op",
     location: "Solapur, Maharashtra",
     category: "Fruits"
@@ -74,7 +87,7 @@ const products = [
     unit: "500g",
     rating: 4.8,
     reviews: 134,
-    image: "/images/products/butter.jpg",
+    image: "/images/organic butter.jpg",
     farmer: "Punjab Dairy Co-op",
     location: "Amritsar, Punjab",
     category: "Dairy"
@@ -86,7 +99,7 @@ const products = [
     unit: "kg",
     rating: 4.5,
     reviews: 178,
-    image: "/images/products/curd.jpg",
+    image: "/images/fresh curd.jpg",
     farmer: "Gujarat Dairy Farm",
     location: "Anand, Gujarat",
     category: "Dairy"
@@ -100,7 +113,7 @@ const products = [
     unit: "kg",
     rating: 4.7,
     reviews: 89,
-    image: "/images/products/quinoa.jpg",
+    image: "/images/Organic Quinoa.jpg",
     farmer: "Uttarakhand Organic",
     location: "Dehradun, Uttarakhand",
     category: "Grains"
@@ -112,7 +125,7 @@ const products = [
     unit: "kg",
     rating: 4.6,
     reviews: 156,
-    image: "/images/products/brown-rice.jpg",
+    image: "/images/brown rice.jpg",
     farmer: "Bengal Rice Co-op",
     location: "Bardhaman, West Bengal",
     category: "Grains"
@@ -126,7 +139,7 @@ const products = [
     unit: "10g",
     rating: 4.9,
     reviews: 203,
-    image: "/images/products/saffron.jpg",
+    image: "/images/Kashmiri Saffron.jpg",
     farmer: "Kashmir Valley Co-op",
     location: "Pampore, Kashmir",
     category: "Spices"
@@ -138,7 +151,7 @@ const products = [
     unit: "100g",
     rating: 4.7,
     reviews: 145,
-    image: "/images/products/cinnamon.jpg",
+    image: "/images/Cinnamon Sticks.jpg",
     farmer: "Kerala Spice Garden",
     location: "Kochi, Kerala",
     category: "Spices"
@@ -152,7 +165,7 @@ const products = [
     unit: "kg",
     rating: 4.5,
     reviews: 167,
-    image: "/images/products/yellow-dal.jpg",
+    image: "/images/Yellow Dal.jpg",
     farmer: "MP Pulse Farmers",
     location: "Indore, Madhya Pradesh",
     category: "Pulses"
@@ -164,7 +177,7 @@ const products = [
     unit: "kg",
     rating: 4.6,
     reviews: 134,
-    image: "/images/products/urad-dal.jpg",
+    image: "/images/Black Urad Dal.jpg",
     farmer: "Maharashtra Dal Mill",
     location: "Nagpur, Maharashtra",
     category: "Pulses"
@@ -178,7 +191,7 @@ const products = [
     unit: "kg",
     rating: 4.8,
     reviews: 178,
-    image: "/images/products/walnuts.jpg",
+    image: "/images/Kashmiri Walnuts.jpg",
     farmer: "Kashmir Nut Co-op",
     location: "Anantnag, Kashmir",
     category: "Nuts"
@@ -190,7 +203,7 @@ const products = [
     unit: "kg",
     rating: 4.7,
     reviews: 156,
-    image: "/images/products/cashews.jpg",
+    image: "/images/Organic Cashews.jpg",
     farmer: "Goa Cashew Farm",
     location: "Panaji, Goa",
     category: "Nuts"
@@ -204,7 +217,7 @@ const products = [
     unit: "250g",
     rating: 4.8,
     reviews: 145,
-    image: "/images/products/moringa.jpg",
+    image: "/images/Organic Moringa Powder.jpg",
     farmer: "Tamil Organic Farm",
     location: "Coimbatore, Tamil Nadu",
     category: "Organic"
@@ -216,7 +229,7 @@ const products = [
     unit: "kg",
     rating: 4.6,
     reviews: 123,
-    image: "/images/products/amla.jpg",
+    image: "/images/Organic Amla.jpg",
     farmer: "UP Organic Co-op",
     location: "Pratapgarh, Uttar Pradesh",
     category: "Organic"
@@ -228,7 +241,7 @@ const products = [
     unit: "kg",
     rating: 4.8,
     reviews: 95,
-    image: "/images/products/apples.jpg",
+    image: "/images/Kashmir Apples.jpg",
     farmer: "Himalayan Orchards",
     location: "Sopore, Kashmir",
     category: "Fruits"
@@ -240,7 +253,7 @@ const products = [
     unit: "dozen",
     rating: 4.9,
     reviews: 156,
-    image: "/images/products/eggs.jpg",
+    image: "/images/country egg.jpg",
     farmer: "Punjab Poultry Farm",
     location: "Ludhiana, Punjab",
     category: "Eggs"
@@ -252,7 +265,7 @@ const products = [
     unit: "litre",
     rating: 4.7,
     reviews: 89,
-    image: "/images/products/milk.jpg",
+    image: "/images/Fresh Buffalo Milk.jpg",
     farmer: "Amul Dairy Farm",
     location: "Amritsar, Punjab",
     category: "Dairy"
@@ -264,7 +277,7 @@ const products = [
     unit: "500g",
     rating: 5.0,
     reviews: 203,
-    image: "/images/products/honey.jpg",
+    image: "/images/Pure Forest Honey.jpg",
     farmer: "Nilgiri Apiaries",
     location: "Nilgiris, Tamil Nadu",
     category: "Honey"
@@ -276,7 +289,7 @@ const products = [
     unit: "kg",
     rating: 4.6,
     reviews: 75,
-    image: "/images/products/rice.jpg",
+    image: "/images/Organic Basmati Rice.jpg",
     farmer: "Punjab Grain Co-op",
     location: "Ferozepur, Punjab",
     category: "Grains"
@@ -288,7 +301,7 @@ const products = [
     unit: "bunch",
     rating: 4.4,
     reviews: 112,
-    image: "/images/products/spinach.jpg",
+    image: "/images/Fresh Palak.jpg",
     farmer: "UP Green Farms",
     location: "Mirzapur, Uttar Pradesh",
     category: "Vegetables"
@@ -300,7 +313,7 @@ const products = [
     unit: "dozen",
     rating: 4.9,
     reviews: 167,
-    image: "/images/products/mangoes.jpg",
+    image: "/images/Alphonso Mangoes.jpg",
     farmer: "Ratnagiri Farms",
     location: "Ratnagiri, Maharashtra",
     category: "Fruits"
@@ -312,7 +325,7 @@ const products = [
     unit: "kg",
     rating: 4.8,
     reviews: 143,
-    image: "/images/products/paneer.jpg",
+    image: "/images/Fresh Paneer.jpg",
     farmer: "Gujarat Dairy Co-op",
     location: "Ahmedabad, Gujarat",
     category: "Dairy"
@@ -324,7 +337,7 @@ const products = [
     unit: "piece",
     rating: 4.3,
     reviews: 98,
-    image: "/images/products/cauliflower.jpg",
+    image: "/images/Organic Cauliflower.jpg",
     farmer: "Himachal Farms",
     location: "Shimla, Himachal Pradesh",
     category: "Vegetables"
@@ -336,7 +349,7 @@ const products = [
     unit: "kg",
     rating: 4.9,
     reviews: 178,
-    image: "/images/products/litchi.jpg",
+    image: "/images/Sweet Litchi.jpg",
     farmer: "Bihar Orchards",
     location: "Patna, Bihar",
     category: "Fruits"
@@ -348,7 +361,7 @@ const products = [
     unit: "litre",
     rating: 4.7,
     reviews: 88,
-    image: "/images/products/ghee.jpg",
+    image: "/images/Pure Desi Ghee.jpg",
     farmer: "Rajasthan Dairy",
     location: "Jodhpur, Rajasthan",
     category: "Dairy"
@@ -360,7 +373,7 @@ const products = [
     unit: "kg",
     rating: 4.5,
     reviews: 156,
-    image: "/images/products/wheat.jpg",
+    image: "/images/Organic Wheat.jpg",
     farmer: "MP Grain Farmers",
     location: "Bhopal, Madhya Pradesh",
     category: "Grains"
@@ -372,7 +385,7 @@ const products = [
     unit: "kg",
     rating: 4.4,
     reviews: 92,
-    image: "/images/products/peas.jpg",
+    image: "/images/Fresh Green Peas.jpg",
     farmer: "UP Green Farms",
     location: "Lucknow, Uttar Pradesh",
     category: "Vegetables"
@@ -384,7 +397,7 @@ const products = [
     unit: "kg",
     rating: 4.6,
     reviews: 67,
-    image: "/images/products/jowar.jpg",
+    image: "/images/Organic Jowar.jpg",
     farmer: "Maharashtra Grains",
     location: "Pune, Maharashtra",
     category: "Grains"
@@ -396,7 +409,7 @@ const products = [
     unit: "kg",
     rating: 4.7,
     reviews: 142,
-    image: "/images/products/turmeric.jpg",
+    image: "/images/Organic Turmeric.jpg",
     farmer: "Salem Spice Gardens",
     location: "Salem, Tamil Nadu",
     category: "Spices"
@@ -408,7 +421,7 @@ const products = [
     unit: "kg",
     rating: 4.8,
     reviews: 165,
-    image: "/images/products/pepper.jpg",
+    image: "/images/Black Pepper.jpg",
     farmer: "Wayanad Spice Co-op",
     location: "Wayanad, Kerala",
     category: "Spices"
@@ -420,7 +433,7 @@ const products = [
     unit: "500g",
     rating: 4.9,
     reviews: 189,
-    image: "/images/products/tea.jpg",
+    image: "/images/Assam Tea.jpg",
     farmer: "Dibrugarh Tea Estate",
     location: "Dibrugarh, Assam",
     category: "Tea"
@@ -432,7 +445,7 @@ const products = [
     unit: "kg",
     rating: 4.7,
     reviews: 92,
-    image: "/images/products/cardamom.jpg",
+    image: "/images/Organic Cardamom.jpg",
     farmer: "Munnar Spice Gardens",
     location: "Munnar, Kerala",
     category: "Spices"
@@ -444,7 +457,7 @@ const products = [
     unit: "500g",
     rating: 4.9,
     reviews: 178,
-    image: "/images/products/darjeeling-tea.jpg",
+    image: "/images/Darjeeling Tea.jpg",
     farmer: "Darjeeling Tea Estate",
     location: "Darjeeling, West Bengal",
     category: "Tea"
@@ -456,7 +469,7 @@ const products = [
     unit: "piece",
     rating: 4.4,
     reviews: 145,
-    image: "/images/products/coconut.jpg",
+    image: "/images/Organic Coconut.jpg",
     farmer: "Kerala Coconut Farm",
     location: "Kozhikode, Kerala",
     category: "Fruits"
@@ -468,7 +481,7 @@ const products = [
     unit: "kg",
     rating: 4.6,
     reviews: 88,
-    image: "/images/products/ginger.jpg",
+    image: "/images/Fresh Ginger.jpg",
     farmer: "Northeast Organic Farm",
     location: "Sikkim",
     category: "Spices"
@@ -480,7 +493,7 @@ const products = [
     unit: "kg",
     rating: 4.5,
     reviews: 156,
-    image: "/images/products/jaggery.jpg",
+    image: "/images/Organic Jaggery.jpg",
     farmer: "Kolhapur Sugar Co-op",
     location: "Kolhapur, Maharashtra",
     category: "Sweeteners"
@@ -492,7 +505,7 @@ const products = [
     unit: "kg",
     rating: 4.3,
     reviews: 112,
-    image: "/images/products/garlic.jpg",
+    image: "/images/Fresh Garlic.jpg",
     farmer: "MP Garlic Farms",
     location: "Mandsaur, Madhya Pradesh",
     category: "Vegetables"
@@ -504,20 +517,76 @@ const products = [
     unit: "kg",
     rating: 4.7,
     reviews: 94,
-    image: "/images/products/palm-jaggery.jpg",
+    image: "/images/Pure Palm Jaggery.jpg",
     farmer: "Tamil Palm Farmers",
     location: "Pollachi, Tamil Nadu",
     category: "Sweeteners"
   }
-];
+  ];
 
-const ProductGrid = ({ selectedCategory, onAddToCart }) => {
-  const [hoveredProduct, setHoveredProduct] = useState(null);
+  // Filter and sort products when dependencies change
+  useEffect(() => {
+    let result = [...products];
 
-  // Filter products based on selected category from props
-  const filteredProducts = selectedCategory === 'All' 
-    ? products 
-    : products.filter(product => product.category === selectedCategory);
+    // Category filter
+    if (selectedCategory && selectedCategory.toLowerCase() !== 'all') {
+      result = result.filter(product => 
+        product.category.toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(product =>
+        product.name.toLowerCase().includes(query) ||
+        product.farmer.toLowerCase().includes(query) ||
+        product.location.toLowerCase().includes(query) ||
+        product.category.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort products
+    result = sortProducts(result, sortBy);
+    setFilteredProducts(result);
+  }, [selectedCategory, searchQuery, sortBy]);
+
+  const sortProducts = (products, sortType) => {
+    switch (sortType) {
+      case 'price-asc':
+        return [...products].sort((a, b) => a.price - b.price);
+      case 'price-desc':
+        return [...products].sort((a, b) => b.price - a.price);
+      case 'name-asc':
+        return [...products].sort((a, b) => a.name.localeCompare(b.name));
+      case 'name-desc':
+        return [...products].sort((a, b) => b.name.localeCompare(a.name));
+      case 'rating-desc':
+        return [...products].sort((a, b) => b.rating - a.rating);
+      case 'newest':
+        return [...products].sort((a, b) => b.id - a.id);
+      default: // 'relevance'
+        return products;
+    }
+  };
+
+  const toggleWishlist = (productId) => {
+    setWishlist(prev => 
+      prev.includes(productId) 
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  const shareProduct = (product) => {
+    if (navigator.share) {
+      navigator.share({
+        title: product.name,
+        text: `Check out ${product.name} from ${product.farmer}!`,
+        url: window.location.href,
+      });
+    }
+  };
 
   const renderStars = (rating) => {
     return [...Array(5)].map((_, index) => (
@@ -533,65 +602,141 @@ const ProductGrid = ({ selectedCategory, onAddToCart }) => {
     ));
   };
 
+  const handleScanQR = (product) => {
+    // Implement QR code scanning functionality
+    console.log('Scanning QR for product:', product.name);
+  };
+
   return (
     <div className="space-y-6">
-      {/* Products Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredProducts.map((product) => (
           <div
             key={product.id}
-            className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
+            className="group relative bg-white rounded-xl shadow-sm hover:shadow-md 
+              transition-all duration-300 overflow-hidden"
             onMouseEnter={() => setHoveredProduct(product.id)}
             onMouseLeave={() => setHoveredProduct(null)}
           >
             {/* Product Image */}
-            <div className="relative h-48 rounded-t-lg overflow-hidden">
+            <div className="relative aspect-square overflow-hidden">
               <img
                 src={product.image}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover group-hover:scale-105 
+                  transition-transform duration-300"
               />
-              {hoveredProduct === product.id && (
-                <button 
-                  className="absolute bottom-4 right-4 bg-green-500 text-white p-2 rounded-full hover:bg-green-600 transition-colors"
-                  onClick={() => onAddToCart(product)}
-                >
-                  <ShoppingCart size={20} />
-                </button>
-              )}
+              
+              {/* Action Buttons */}
+              <div className={`absolute right-4 top-4 transition-opacity duration-300 
+                ${hoveredProduct === product.id ? 'opacity-100' : 'opacity-0'}`}
+              >
+                <div className="flex flex-col gap-2">
+                  {isManagement ? (
+                    <>
+                      <button
+                        onClick={() => onEdit(product)}
+                        className="p-2 bg-white rounded-full shadow-md hover:bg-blue-50 
+                          transition-colors"
+                        title="Edit Product"
+                      >
+                        <span className="text-blue-600">✏️</span>
+                      </button>
+                      <button
+                        onClick={() => onDelete(product.id)}
+                        className="p-2 bg-white rounded-full shadow-md hover:bg-red-50 
+                          transition-colors"
+                        title="Delete Product"
+                      >
+                        <span className="text-red-600">🗑️</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => toggleWishlist(product.id)}
+                        className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 
+                          transition-colors"
+                        title="Add to Wishlist"
+                      >
+                        <Heart
+                          size={20}
+                          className={wishlist.includes(product.id) 
+                            ? 'fill-red-500 text-red-500' 
+                            : 'text-gray-600'}
+                        />
+                      </button>
+                      <button
+                        onClick={() => shareProduct(product)}
+                        className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 
+                          transition-colors"
+                        title="Share Product"
+                      >
+                        <Share2 size={20} className="text-gray-600" />
+                      </button>
+                      <button
+                        onClick={() => handleScanQR(product)}
+                        className="p-2 bg-white rounded-full shadow-md hover:bg-gray-50 
+                          transition-colors"
+                        title="Scan QR Code"
+                      >
+                        <QrCode size={20} className="text-gray-600" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Category Badge */}
+              <span className="absolute top-4 left-4 px-3 py-1 bg-white/90 
+                rounded-full text-sm font-medium text-gray-700">
+                {product.category}
+              </span>
             </div>
 
             {/* Product Info */}
             <div className="p-4">
-              <h3 className="font-semibold text-gray-800 mb-1">
-                {product.name}
-              </h3>
-              <p className="text-sm text-gray-500 mb-1">
-                by {product.farmer}
-              </p>
-              <p className="text-xs text-gray-400 mb-2">
-                {product.location}
-              </p>
-              
-              {/* Price */}
-              <div className="flex items-baseline mb-2">
-                <span className="text-lg font-bold text-gray-900">
-                  ₹{product.price}
-                </span>
-                <span className="text-sm text-gray-500 ml-1">
-                  /{product.unit}
-                </span>
+              <div className="mb-2">
+                <h3 className="text-lg font-semibold text-gray-800 mb-1 
+                  line-clamp-1 hover:line-clamp-none">
+                  {product.name}
+                </h3>
+                <p className="text-sm text-gray-500">by {product.farmer}</p>
+                <p className="text-xs text-gray-400">{product.location}</p>
               </div>
 
-              {/* Rating */}
-              <div className="flex items-center">
-                <div className="flex mr-2">
-                  {renderStars(product.rating)}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-baseline">
+                  <span className="text-xl font-bold text-gray-900">
+                    ₹{product.price}
+                  </span>
+                  <span className="text-sm text-gray-500 ml-1">
+                    /{product.unit}
+                  </span>
                 </div>
-                <span className="text-sm text-gray-500">
-                  ({product.reviews})
-                </span>
+                <div className="flex items-center">
+                  <div className="flex mr-1">
+                    {renderStars(product.rating)}
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    ({product.reviews})
+                  </span>
+                </div>
               </div>
+
+              {/* Action Button */}
+              <button
+                onClick={() => onAddToCart && onAddToCart(product)}
+                className="w-full bg-emerald-600 text-white py-2 rounded-lg 
+                  hover:bg-emerald-700 transition-colors flex items-center 
+                  justify-center gap-2 group"
+              >
+                <ShoppingCart 
+                  size={20} 
+                  className="group-hover:scale-110 transition-transform" 
+                />
+                {isManagement ? 'Update Stock' : 'Add to Cart'}
+              </button>
             </div>
           </div>
         ))}
@@ -599,9 +744,13 @@ const ProductGrid = ({ selectedCategory, onAddToCart }) => {
 
       {/* Empty State */}
       {filteredProducts.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">
-            No products found in this category.
+        <div className="text-center py-12 bg-white rounded-xl shadow-sm">
+          <div className="mb-4">🔍</div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">
+            No Products Found
+          </h3>
+          <p className="text-gray-500">
+            Try adjusting your search or filter settings
           </p>
         </div>
       )}

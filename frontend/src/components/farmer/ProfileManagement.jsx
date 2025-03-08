@@ -2,14 +2,47 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import axios from '../../utils/axios';
 
-const ProfileManagement = ({ farmerData, onUpdate }) => {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [showMap, setShowMap] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+const inputGuides = {
+  farmer_name: {
+    title: "Your Full Name",
+    guide: "Enter your legal first and last name as it appears on official documents"
+  },
+  farm_name: {
+    title: "Farm Name",
+    guide: "Enter your farm's business name. This will be visible to customers"
+  },
+  phone_number: {
+    title: "Contact Number",
+    guide: "Enter a phone number where customers can reach you during business hours"
+  },
+  location: {
+    title: "Farm Location",
+    guide: "Enter your farm's address or general area for delivery planning"
+  },
+  farm_type: {
+    title: "Type of Farm",
+    guide: "Select the category that best describes your farming practices"
+  },
+  description: {
+    title: "Farm Description",
+    guide: "Tell your story! Share your farming philosophy, special practices, and what makes your farm unique"
+  },
+  delivery_radius: {
+    title: "Delivery Range",
+    guide: "Enter the maximum distance (in kilometers) you're willing to deliver your products"
+  },
+  certifications: {
+    title: "Certifications",
+    guide: "Select any certifications or standards your farm follows"
+  }
+};
 
+const ProfileManagement = ({ farmerData, onUpdate }) => {
+  const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [activeTooltip, setActiveTooltip] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  
   const [formData, setFormData] = useState({
     farmer_name: '',
     farm_name: '',
@@ -18,16 +51,9 @@ const ProfileManagement = ({ farmerData, onUpdate }) => {
     profile_image: null,
     farm_type: '',
     description: '',
-    story: '',
-    certifications: [],
-    farm_photos: [],
     delivery_radius: '',
     preferred_payment: [],
-    social_media: {
-      facebook: '',
-      instagram: '',
-      twitter: ''
-    }
+    certifications: []
   });
 
   useEffect(() => {
@@ -39,57 +65,26 @@ const ProfileManagement = ({ farmerData, onUpdate }) => {
     }
   }, [farmerData]);
 
-  const steps = [
-    { title: 'Basic Info', icon: '👤' },
-    { title: 'Farm Details', icon: '🏡' },
-    { title: 'Photos', icon: '📸' },
-    { title: 'Business', icon: '💼' },
-    { title: 'Review', icon: '✅' }
-  ];
-
-  const handleVoiceInput = async (fieldName) => {
-    try {
-      setIsRecording(true);
-      // Voice recognition logic here
-      const recognition = new window.webkitSpeechRecognition();
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setFormData(prev => ({
-          ...prev,
-          [fieldName]: transcript
-        }));
-      };
-      recognition.start();
-    } catch (error) {
-      console.error('Voice input error:', error);
-    } finally {
-      setIsRecording(false);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       const data = new FormData();
       Object.keys(formData).forEach(key => {
-        if (key === 'farm_photos') {
-          formData.farm_photos.forEach(photo => {
-            data.append('farm_photos', photo);
-          });
-        } else if (key === 'social_media') {
-          data.append('social_media', JSON.stringify(formData.social_media));
+        if (key === 'profile_image') {
+          if (formData.profile_image) {
+            data.append('profile_image', formData.profile_image);
+          }
         } else {
           data.append(key, formData[key]);
         }
       });
 
-      await axios.post('/api/farmer/profile/update/', data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await axios.post('/api/farmer/profile/update/', data);
       onUpdate();
       setSuccessMessage('Profile updated successfully!');
-      setIsEditMode(false);
+      setIsEditing(false);
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
       console.error('Error updating profile:', error);
       alert('Failed to update profile. Please try again.');
@@ -98,180 +93,375 @@ const ProfileManagement = ({ farmerData, onUpdate }) => {
     }
   };
 
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 0:
-        return (
-          <div className="space-y-6">
-            <div className="flex justify-center">
-              <div className="relative">
-                <img
-                  src={formData.profile_image ? URL.createObjectURL(formData.profile_image) : '/default-avatar.png'}
-                  alt="Profile"
-                  className="w-32 h-32 rounded-full object-cover border-4 border-green-100"
-                />
-                <label className="absolute bottom-0 right-0 bg-green-600 text-white p-2 rounded-full cursor-pointer hover:bg-green-700">
-                  📷
-                  <input
-                    type="file"
-                    name="profile_image"
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      profile_image: e.target.files[0]
-                    }))}
-                    className="hidden"
-                    accept="image/*"
-                  />
-                </label>
+  const showTooltip = (fieldName) => {
+    setActiveTooltip(fieldName);
+  };
+
+  const hideTooltip = () => {
+    setActiveTooltip(null);
+  };
+
+  const ProfileDisplay = () => (
+    <div className="max-w-4xl mx-auto">
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        {/* Hero Banner */}
+        <div className="relative h-48 bg-gradient-to-r from-emerald-600 to-green-500">
+          <div className="absolute inset-0 bg-black/20"></div>
+          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/50 to-transparent"></div>
+        </div>
+
+        {/* Profile Info Section */}
+        <div className="relative px-8 pb-8">
+          {/* Profile Image */}
+          <div className="relative -mt-20 mb-4">
+            <img
+              src={formData.profile_image ? URL.createObjectURL(formData.profile_image) : '/default-avatar.png'}
+              alt="Profile"
+              className="w-32 h-32 rounded-2xl object-cover border-4 border-white shadow-xl"
+            />
+            <div className="absolute bottom-2 right-2 w-6 h-6 bg-green-500 rounded-full border-4 border-white"></div>
+          </div>
+
+          {/* Farm Name and Basic Info */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{formData.farm_name}</h1>
+            <p className="text-lg text-emerald-600">{formData.farmer_name}</p>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-3 gap-6 mb-8">
+            <div className="bg-emerald-50 rounded-xl p-4 text-center">
+              <span className="text-2xl mb-1 block">🌾</span>
+              <h3 className="font-semibold text-emerald-800">{formData.farm_type}</h3>
+              <p className="text-sm text-emerald-600">Farm Type</p>
+            </div>
+            <div className="bg-emerald-50 rounded-xl p-4 text-center">
+              <span className="text-2xl mb-1 block">🚚</span>
+              <h3 className="font-semibold text-emerald-800">{formData.delivery_radius}km</h3>
+              <p className="text-sm text-emerald-600">Delivery Range</p>
+            </div>
+            <div className="bg-emerald-50 rounded-xl p-4 text-center">
+              <span className="text-2xl mb-1 block">✅</span>
+              <h3 className="font-semibold text-emerald-800">{formData.certifications.length}</h3>
+              <p className="text-sm text-emerald-600">Certifications</p>
+            </div>
+          </div>
+
+          {/* Contact and Location */}
+          <div className="grid grid-cols-2 gap-6 mb-8">
+            <div className="bg-white rounded-xl border border-emerald-100 p-6">
+              <h3 className="text-lg font-semibold text-emerald-800 mb-4 flex items-center">
+                <span className="text-emerald-500 mr-2">📞</span> Contact Details
+              </h3>
+              <div className="space-y-3">
+                <p className="flex items-center text-gray-600">
+                  <span className="w-20 text-gray-500">Phone:</span>
+                  <span className="font-medium">{formData.phone_number}</span>
+                </p>
+                <p className="flex items-center text-gray-600">
+                  <span className="w-20 text-gray-500">Location:</span>
+                  <span className="font-medium">{formData.location}</span>
+                </p>
               </div>
             </div>
-            
-            {/* Basic Info Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Farmer Name
-                </label>
-                <div className="mt-1 flex rounded-md shadow-sm">
-                  <input
-                    type="text"
-                    name="farmer_name"
-                    value={formData.farmer_name}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      farmer_name: e.target.value
-                    }))}
-                    className="flex-1 rounded-l-md border-gray-300 focus:border-green-500 focus:ring-green-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleVoiceInput('farmer_name')}
-                    className={`px-3 py-2 rounded-r-md border border-l-0 ${
-                      isRecording ? 'bg-red-500' : 'bg-green-600'
-                    } text-white`}
-                  >
-                    🎤
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Farm Name</label>
-                <div className="mt-1">
-                  <input
-                    type="text"
-                    value={formData.farm_name}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      farm_name: e.target.value
-                    }))}
-                    className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"
-                    placeholder="Your farm's name"
-                  />
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-                <div className="mt-1">
-                  <input
-                    type="tel"
-                    value={formData.phone_number}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      phone_number: e.target.value
-                    }))}
-                    className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Location</label>
-                <div className="mt-1 flex rounded-md shadow-sm">
-                  <input
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      location: e.target.value
-                    }))}
-                    className="flex-1 rounded-l-md border-gray-300 focus:border-green-500 focus:ring-green-500"
-                    placeholder="Farm address"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowMap(true)}
-                    className="px-3 py-2 rounded-r-md border border-l-0 bg-green-600 text-white hover:bg-green-700"
+            <div className="bg-white rounded-xl border border-emerald-100 p-6">
+              <h3 className="text-lg font-semibold text-emerald-800 mb-4 flex items-center">
+                <span className="text-emerald-500 mr-2">🏆</span> Certifications
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {formData.certifications.map((cert, index) => (
+                  <span 
+                    key={index}
+                    className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium"
                   >
-                    📍
-                  </button>
-                </div>
+                    {cert}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
-        );
 
-      case 1:
-        return (
-          <div className="space-y-6">
+          {/* Farm Description */}
+          <div className="bg-white rounded-xl border border-emerald-100 p-6 mb-8">
+            <h3 className="text-lg font-semibold text-emerald-800 mb-4 flex items-center">
+              <span className="text-emerald-500 mr-2">📝</span> About Our Farm
+            </h3>
+            <p className="text-gray-600 leading-relaxed">
+              {formData.description || "No description provided yet."}
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-center space-x-4">
+            <button
+              onClick={() => setIsEditing(true)}
+              className="px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors duration-200 flex items-center"
+            >
+              <span className="mr-2">✏️</span> Edit Profile
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="px-6 py-3 border border-emerald-600 text-emerald-600 rounded-xl hover:bg-emerald-50 transition-colors duration-200 flex items-center"
+            >
+              <span className="mr-2">📄</span> Download PDF
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Additional Features */}
+      <div className="mt-8 grid grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl p-6 border border-emerald-100">
+          <h3 className="text-lg font-semibold text-emerald-800 mb-4 flex items-center">
+            <span className="text-emerald-500 mr-2">📊</span> Profile Completion
+          </h3>
+          <div className="relative pt-1">
+            <div className="overflow-hidden h-2 mb-4 text-xs flex rounded-full bg-emerald-100">
+              <div 
+                style={{ width: "80%" }} 
+                className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-emerald-500"
+              ></div>
+            </div>
+            <div className="flex justify-between text-sm text-emerald-600">
+              <span>80% Complete</span>
+              <span>4/5 Sections Filled</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 border border-emerald-100">
+          <h3 className="text-lg font-semibold text-emerald-800 mb-4 flex items-center">
+            <span className="text-emerald-500 mr-2">⭐</span> Profile Status
+          </h3>
+          <div className="flex items-center justify-between">
+            <span className="text-emerald-600">Verified Farmer</span>
+            <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium">
+              Active
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!isEditing) {
+    return (
+      <>
+        {successMessage && (
+          <div className="mb-6 p-4 bg-green-100 text-green-700 rounded-lg text-center">
+            {successMessage}
+          </div>
+        )}
+        <ProfileDisplay />
+      </>
+    );
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      {successMessage && (
+        <div className="mb-6 p-4 bg-green-100 text-green-700 rounded-lg text-center">
+          {successMessage}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Profile Image */}
+        <div className="flex justify-center">
+          <div className="relative">
+            <img
+              src={formData.profile_image ? URL.createObjectURL(formData.profile_image) : '/default-avatar.png'}
+              alt="Profile"
+              className="w-32 h-32 rounded-full object-cover border-4 border-emerald-100"
+            />
+            <label className="absolute bottom-0 right-0 bg-emerald-500 text-white p-2 rounded-full cursor-pointer hover:bg-emerald-600 transition-colors">
+              📷
+              <input
+                type="file"
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  profile_image: e.target.files[0]
+                }))}
+                className="hidden"
+                accept="image/*"
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Basic Information */}
+        <div className="bg-white p-6 rounded-xl shadow-sm">
+          <h3 className="text-xl font-semibold text-emerald-800 mb-6">Basic Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Farmer Name Input */}
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {inputGuides.farmer_name.title}
+                <span 
+                  className="ml-2 text-emerald-600 cursor-pointer"
+                  onMouseEnter={() => showTooltip('farmer_name')}
+                  onMouseLeave={hideTooltip}
+                >
+                  ℹ️
+                </span>
+              </label>
+              {activeTooltip === 'farmer_name' && (
+                <div className="absolute z-10 bg-emerald-800 text-white p-3 rounded-lg text-sm w-64 shadow-lg -top-12">
+                  {inputGuides.farmer_name.guide}
+                  <div className="absolute bottom-[-8px] left-4 w-4 h-4 bg-emerald-800 transform rotate-45"></div>
+                </div>
+              )}
+              <input
+                type="text"
+                value={formData.farmer_name}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  farmer_name: e.target.value
+                }))}
+                onFocus={() => showTooltip('farmer_name')}
+                onBlur={hideTooltip}
+                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                placeholder="Enter your name"
+              />
+            </div>
+
+            {/* Farm Name Input */}
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {inputGuides.farm_name.title}
+                <span 
+                  className="ml-2 text-emerald-600 cursor-pointer"
+                  onMouseEnter={() => showTooltip('farm_name')}
+                  onMouseLeave={hideTooltip}
+                >
+                  ℹ️
+                </span>
+              </label>
+              {activeTooltip === 'farm_name' && (
+                <div className="absolute z-10 bg-emerald-800 text-white p-3 rounded-lg text-sm w-64 shadow-lg -top-12">
+                  {inputGuides.farm_name.guide}
+                  <div className="absolute bottom-[-8px] left-4 w-4 h-4 bg-emerald-800 transform rotate-45"></div>
+                </div>
+              )}
+              <input
+                type="text"
+                value={formData.farm_name}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  farm_name: e.target.value
+                }))}
+                onFocus={() => showTooltip('farm_name')}
+                onBlur={hideTooltip}
+                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                placeholder="Enter your farm name"
+              />
+            </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">Farm Type</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+              <input
+                type="tel"
+                value={formData.phone_number}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  phone_number: e.target.value
+                }))}
+                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                placeholder="Your contact number"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+              <input
+                type="text"
+                value={formData.location}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  location: e.target.value
+                }))}
+                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                placeholder="Your farm location"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Farm Details */}
+        <div className="bg-white p-6 rounded-xl shadow-sm">
+          <h3 className="text-xl font-semibold text-emerald-800 mb-6">Farm Details</h3>
+          
+          <div className="space-y-6">
+            {/* Farm Type Select */}
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {inputGuides.farm_type.title}
+                <span 
+                  className="ml-2 text-emerald-600 cursor-pointer"
+                  onMouseEnter={() => showTooltip('farm_type')}
+                  onMouseLeave={hideTooltip}
+                >
+                  ℹ️
+                </span>
+              </label>
+              {activeTooltip === 'farm_type' && (
+                <div className="absolute z-10 bg-emerald-800 text-white p-3 rounded-lg text-sm w-64 shadow-lg -top-12">
+                  {inputGuides.farm_type.guide}
+                  <div className="absolute bottom-[-8px] left-4 w-4 h-4 bg-emerald-800 transform rotate-45"></div>
+                </div>
+              )}
               <select
                 value={formData.farm_type}
                 onChange={(e) => setFormData(prev => ({
                   ...prev,
                   farm_type: e.target.value
                 }))}
-                className="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"
+                onFocus={() => showTooltip('farm_type')}
+                onBlur={hideTooltip}
+                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">Select farm type</option>
                 <option value="organic">Organic Farm</option>
                 <option value="conventional">Conventional Farm</option>
                 <option value="hydroponic">Hydroponic Farm</option>
-                <option value="aquaponic">Aquaponic Farm</option>
                 <option value="mixed">Mixed Farming</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Description</label>
-              <div className="mt-1">
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    description: e.target.value
-                  }))}
-                  rows={3}
-                  className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"
-                  placeholder="Brief description of your farm"
-                />
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">About Your Farm</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  description: e.target.value
+                }))}
+                rows={4}
+                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                placeholder="Tell customers about your farm and products..."
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Your Story</label>
-              <div className="mt-1">
-                <textarea
-                  value={formData.story}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    story: e.target.value
-                  }))}
-                  rows={5}
-                  className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"
-                  placeholder="Share your farming journey"
-                />
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Range (km)</label>
+              <input
+                type="number"
+                value={formData.delivery_radius}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  delivery_radius: e.target.value
+                }))}
+                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                placeholder="How far can you deliver?"
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Certifications</label>
-              <div className="mt-2 space-y-2">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Certifications</label>
+              <div className="grid grid-cols-2 gap-3">
                 {['Organic', 'Non-GMO', 'Fair Trade', 'Sustainable'].map(cert => (
-                  <label key={cert} className="inline-flex items-center mr-4">
+                  <label key={cert} className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-emerald-50 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={formData.certifications.includes(cert)}
@@ -284,7 +474,7 @@ const ProfileManagement = ({ farmerData, onUpdate }) => {
                           certifications: updatedCerts
                         }));
                       }}
-                      className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      className="h-4 w-4 text-emerald-600 rounded"
                     />
                     <span className="ml-2">{cert}</span>
                   </label>
@@ -292,435 +482,30 @@ const ProfileManagement = ({ farmerData, onUpdate }) => {
               </div>
             </div>
           </div>
-        );
-
-      case 2:
-        return (
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Farm Photos</label>
-              <div className="mt-2">
-                <div className="flex items-center justify-center w-full">
-                  <label className="w-full h-32 flex flex-col items-center justify-center border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <span className="text-2xl mb-2">📸</span>
-                      <p className="text-sm text-gray-600">Click to upload farm photos</p>
-                    </div>
-                    <input
-                      type="file"
-                      multiple
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files);
-                        setFormData(prev => ({
-                          ...prev,
-                          farm_photos: [...prev.farm_photos, ...files]
-                        }));
-                      }}
-                      className="hidden"
-                      accept="image/*"
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {formData.farm_photos.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                {formData.farm_photos.map((photo, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={URL.createObjectURL(photo)}
-                      alt={`Farm photo ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData(prev => ({
-                          ...prev,
-                          farm_photos: prev.farm_photos.filter((_, i) => i !== index)
-                        }));
-                      }}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                    >
-                      ❌
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Delivery Radius (km)</label>
-              <div className="mt-1">
-                <input
-                  type="number"
-                  value={formData.delivery_radius}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    delivery_radius: e.target.value
-                  }))}
-                  className="w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"
-                  placeholder="Maximum delivery distance"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Preferred Payment Methods</label>
-              <div className="mt-2 space-y-2">
-                {['Cash', 'Credit Card', 'Bank Transfer', 'Mobile Payment'].map(method => (
-                  <label key={method} className="inline-flex items-center mr-4">
-                    <input
-                      type="checkbox"
-                      checked={formData.preferred_payment.includes(method)}
-                      onChange={(e) => {
-                        const updatedMethods = e.target.checked
-                          ? [...formData.preferred_payment, method]
-                          : formData.preferred_payment.filter(m => m !== method);
-                        setFormData(prev => ({
-                          ...prev,
-                          preferred_payment: updatedMethods
-                        }));
-                      }}
-                      className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                    />
-                    <span className="ml-2">{method}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Social Media</label>
-              <div className="space-y-4 mt-2">
-                <div>
-                  <label className="inline-flex items-center">
-                    <span className="mr-2">📘</span> Facebook
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.social_media.facebook}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      social_media: {
-                        ...prev.social_media,
-                        facebook: e.target.value
-                      }
-                    }))}
-                    className="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"
-                    placeholder="Facebook profile URL"
-                  />
-                </div>
-                
-                <div>
-                  <label className="inline-flex items-center">
-                    <span className="mr-2">📸</span> Instagram
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.social_media.instagram}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      social_media: {
-                        ...prev.social_media,
-                        instagram: e.target.value
-                      }
-                    }))}
-                    className="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"
-                    placeholder="Instagram profile URL"
-                  />
-                </div>
-
-                <div>
-                  <label className="inline-flex items-center">
-                    <span className="mr-2">🐦</span> Twitter
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.social_media.twitter}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      social_media: {
-                        ...prev.social_media,
-                        twitter: e.target.value
-                      }
-                    }))}
-                    className="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"
-                    placeholder="Twitter profile URL"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className="space-y-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Review Your Information</h3>
-            <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
-              <dl className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Object.entries({
-                  'Farm Name': formData.farm_name,
-                  'Farmer Name': formData.farmer_name,
-                  'Phone': formData.phone_number,
-                  'Location': formData.location,
-                  'Farm Type': formData.farm_type,
-                  'Delivery Radius': `${formData.delivery_radius} km`,
-                  'Certifications': formData.certifications.join(', ') || 'None',
-                  'Description': formData.description
-                }).map(([key, value]) => (
-                  <div key={key} className={key === 'Description' ? 'col-span-2' : ''}>
-                    <dt className="text-sm font-medium text-gray-500">{key}</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  const renderProfile = () => {
-    return (
-      <div className="max-w-4xl mx-auto">
-        {successMessage && (
-          <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-lg flex justify-between items-center">
-            {successMessage}
-            <button onClick={() => setSuccessMessage('')}>✕</button>
-          </div>
-        )}
-
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Profile Header */}
-          <div className="relative h-48 bg-green-600">
-            <div className="absolute -bottom-16 left-8">
-              <img
-                src={formData.profile_image ? URL.createObjectURL(formData.profile_image) : '/default-avatar.png'}
-                alt="Profile"
-                className="w-32 h-32 rounded-full border-4 border-white object-cover"
-              />
-            </div>
-          </div>
-
-          <div className="pt-20 px-8 pb-8">
-            {/* Basic Info Section */}
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{formData.farm_name}</h1>
-                <p className="text-gray-600">{formData.farmer_name}</p>
-              </div>
-              <button
-                onClick={() => setIsEditMode(true)}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-              >
-                ✏️ Edit Profile
-              </button>
-            </div>
-
-            {/* Contact Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div>
-                <h2 className="text-lg font-semibold mb-3">Contact Information</h2>
-                <div className="space-y-2">
-                  <p className="flex items-center">
-                    <span className="mr-2">📞</span> {formData.phone_number}
-                  </p>
-                  <p className="flex items-center">
-                    <span className="mr-2">📍</span> {formData.location}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-lg font-semibold mb-3">Farm Details</h2>
-                <div className="space-y-2">
-                  <p className="flex items-center">
-                    <span className="mr-2">🌾</span> {formData.farm_type}
-                  </p>
-                  <p className="flex items-center">
-                    <span className="mr-2">🚚</span> Delivers within {formData.delivery_radius} km
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="mb-8">
-              <h2 className="text-lg font-semibold mb-3">About the Farm</h2>
-              <p className="text-gray-600">{formData.description}</p>
-            </div>
-
-            {/* Certifications */}
-            {formData.certifications.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-lg font-semibold mb-3">Certifications</h2>
-                <div className="flex flex-wrap gap-2">
-                  {formData.certifications.map((cert, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
-                    >
-                      ✅ {cert}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Farm Photos */}
-            {formData.farm_photos.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-lg font-semibold mb-3">Farm Gallery</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {formData.farm_photos.map((photo, index) => (
-                    <img
-                      key={index}
-                      src={URL.createObjectURL(photo)}
-                      alt={`Farm photo ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg"
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Social Media */}
-            {Object.values(formData.social_media).some(value => value) && (
-              <div>
-                <h2 className="text-lg font-semibold mb-3">Connect With Us</h2>
-                <div className="flex space-x-4">
-                  {formData.social_media.facebook && (
-                    <a
-                      href={formData.social_media.facebook}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-700"
-                    >
-                      📘 Facebook
-                    </a>
-                  )}
-                  {formData.social_media.instagram && (
-                    <a
-                      href={formData.social_media.instagram}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-pink-600 hover:text-pink-700"
-                    >
-                      📸 Instagram
-                    </a>
-                  )}
-                  {formData.social_media.twitter && (
-                    <a
-                      href={formData.social_media.twitter}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 hover:text-blue-500"
-                    >
-                      🐦 Twitter
-                    </a>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
-      </div>
-    );
-  };
 
-  if (!isEditMode) {
-    return renderProfile();
-  }
-
-  return (
-    <div className="max-w-4xl mx-auto">
-      {/* Progress Steps */}
-      <div className="flex justify-between items-center mb-8">
-        {steps.map((step, index) => (
-          <div
-            key={index}
-            className={`flex items-center ${
-              index < steps.length - 1 ? 'flex-1' : ''
-            }`}
-          >
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                index <= currentStep ? 'bg-green-600 text-white' : 'bg-gray-200'
-              }`}
-            >
-              {step.icon}
-            </div>
-            {index < steps.length - 1 && (
-              <div
-                className={`flex-1 h-1 mx-4 ${
-                  index < currentStep ? 'bg-green-600' : 'bg-gray-200'
-                }`}
-              />
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Step Content */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-        {renderStepContent()}
-      </div>
-
-      {/* Navigation */}
-      <div className="flex justify-between mt-6">
-        {currentStep > 0 && (
+        {/* Add Cancel Button next to Submit */}
+        <div className="flex justify-center space-x-4">
           <button
-            onClick={() => setCurrentStep(prev => prev - 1)}
-            className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+            type="button"
+            onClick={() => setIsEditing(false)}
+            className="px-8 py-3 rounded-lg text-emerald-600 font-medium border border-emerald-600 hover:bg-emerald-50 transition-colors duration-200"
           >
-            ⬅️ Back
+            Cancel
           </button>
-        )}
-        <button
-          onClick={currentStep === steps.length - 1 ? handleSubmit : () => setCurrentStep(prev => prev + 1)}
-          disabled={loading}
-          className={`px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 ${
-            loading ? 'opacity-50 cursor-not-allowed' : ''
-          }`}
-        >
-          {loading ? (
-            <span className="flex items-center">
-              <div className="animate-spin mr-2">⌛</div>
-              Saving...
-            </span>
-          ) : currentStep === steps.length - 1 ? (
-            'Save Profile ✅'
-          ) : (
-            'Next ➡️'
-          )}
-        </button>
-      </div>
-
-      {/* Map Modal */}
-      {showMap && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-2xl w-full">
-            <div className="flex justify-between mb-4">
-              <h3 className="text-lg font-semibold">Select Location</h3>
-              <button onClick={() => setShowMap(false)}>✕</button>
-            </div>
-            <div className="h-96">
-              {/* Add map component here */}
-            </div>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className={`
+              px-8 py-3 rounded-lg text-white font-medium
+              ${loading ? 'bg-gray-400' : 'bg-emerald-600 hover:bg-emerald-700'}
+              transition-colors duration-200
+            `}
+          >
+            {loading ? 'Saving...' : 'Save Profile'}
+          </button>
         </div>
-      )}
+      </form>
     </div>
   );
 };

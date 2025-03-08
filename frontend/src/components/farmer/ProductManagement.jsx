@@ -1,47 +1,63 @@
 import { useState, useEffect } from 'react';
 import axios from '../../utils/axios';
-import ProductOCRScanner from './ProductOCRScanner';
+import FarmerProductCard from './FarmerProductCard';
+import { Search, Filter, Grid, List, RefreshCw } from 'lucide-react';
 
 const ProductManagement = () => {
   const [products, setProducts] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [imagePreview, setImagePreview] = useState([]);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
-    category: '',
-    stock: '',
-    images: [],
-    delivery_time: '',
-    unit: 'kg',
-    minimum_order: '1',
-    organic: false,
-    seasonal: false,
-    harvest_date: '',
-    expiry_date: '',
-    storage_instructions: '',
-    nutritional_info: '',
-    discount: {
-      amount: 0,
-      type: 'percentage', // or 'fixed'
-      valid_until: null
-    }
-  });
-  const [showScanner, setShowScanner] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [sortBy, setSortBy] = useState('name'); // 'name', 'price', 'stock'
 
   const categories = [
+    { id: 'all', label: '📦 All Products' },
     { id: 'vegetables', label: '🥬 Vegetables' },
     { id: 'fruits', label: '🍎 Fruits' },
     { id: 'grains', label: '🌾 Grains' },
     { id: 'dairy', label: '🥛 Dairy' },
-    { id: 'meat', label: '🥩 Meat' },
     { id: 'herbs', label: '🌿 Herbs' }
+  ];
+
+  const sortOptions = [
+    { value: 'name', label: 'Name (A-Z)' },
+    { value: 'name-desc', label: 'Name (Z-A)' },
+    { value: 'price-asc', label: 'Price (Low to High)' },
+    { value: 'price-desc', label: 'Price (High to Low)' },
+    { value: 'stock-asc', label: 'Stock (Low to High)' },
+    { value: 'stock-desc', label: 'Stock (High to Low)' }
+  ];
+
+  // Sample products data with units
+  const sampleProducts = [
+    {
+      id: 1,
+      name: "Fresh Red Tomatoes",
+      price: 40,
+      stock: 100,
+      category: "Vegetables",
+      unit: "kg",
+      image: "/images/products/tomatoes.jpg"
+    },
+    {
+      id: 2,
+      name: "Organic Potatoes",
+      price: 35,
+      stock: 8,
+      category: "Vegetables",
+      unit: "kg",
+      image: "/images/products/potatoes.jpg"
+    },
+    {
+      id: 3,
+      name: "Sweet Mangoes",
+      price: 80,
+      stock: 50,
+      category: "Fruits",
+      unit: "dozen",
+      image: "/images/products/mangoes.jpg"
+    }
   ];
 
   useEffect(() => {
@@ -49,10 +65,17 @@ const ProductManagement = () => {
   }, []);
 
   const fetchProducts = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await axios.get('/api/farmer/products/');
-      setProducts(response.data);
+      // First try to get products from localStorage
+      const savedProducts = localStorage.getItem('farmerProducts');
+      if (savedProducts) {
+        setProducts(JSON.parse(savedProducts));
+      } else {
+        // If no saved products, use sample data
+        setProducts(sampleProducts);
+        localStorage.setItem('farmerProducts', JSON.stringify(sampleProducts));
+      }
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -60,453 +83,224 @@ const ProductManagement = () => {
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value, type, checked, files } = e.target;
-    if (name === 'images') {
-      const selectedFiles = Array.from(files);
-      setFormData(prev => ({
-        ...prev,
-        images: selectedFiles
-      }));
-      const previews = selectedFiles.map(file => URL.createObjectURL(file));
-      setImagePreview(previews);
-    } else if (type === 'date') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : value
-      }));
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleCreateProduct = async (newProduct) => {
     try {
-      const data = new FormData();
-      Object.keys(formData).forEach(key => {
-        if (key === 'images') {
-          formData.images.forEach(image => {
-            data.append('images', image);
-          });
-        } else if (key === 'discount') {
-          data.append('discount', JSON.stringify(formData.discount));
-        } else {
-          data.append(key, formData[key]);
-        }
-      });
-
-      if (editingProduct) {
-        await axios.put(`/api/farmer/products/${editingProduct.id}/`, data);
-      } else {
-        await axios.post('/api/farmer/products/', data);
-      }
-
-      fetchProducts();
-      resetForm();
-      setShowForm(false);
+      const createdProduct = {
+        ...newProduct,
+        id: Date.now(), // Use timestamp as ID
+        published: false // Add published status
+      };
+      const updatedProducts = [...products, createdProduct];
+      setProducts(updatedProducts);
+      localStorage.setItem('farmerProducts', JSON.stringify(updatedProducts));
     } catch (error) {
-      console.error('Error saving product:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error creating product:', error);
     }
   };
 
-  const handleEdit = (product) => {
-    setEditingProduct(product);
-    setFormData({
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      category: product.category,
-      stock: product.stock,
-      delivery_time: product.delivery_time,
-      images: [],
-      unit: product.unit,
-      minimum_order: product.minimum_order,
-      organic: product.organic,
-      seasonal: product.seasonal,
-      harvest_date: product.harvest_date,
-      expiry_date: product.expiry_date,
-      storage_instructions: product.storage_instructions,
-      nutritional_info: product.nutritional_info,
-      discount: product.discount
-    });
-    setShowForm(true);
+  const handleProductUpdate = async (updatedProduct) => {
+    try {
+      const updatedProducts = products.map(p => 
+        p.id === updatedProduct.id ? updatedProduct : p
+      );
+      setProducts(updatedProducts);
+      localStorage.setItem('farmerProducts', JSON.stringify(updatedProducts));
+    } catch (error) {
+      console.error('Error updating product:', error);
+    }
   };
 
-  const handleDelete = async (productId) => {
+  const handleProductDelete = async (productId) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
-        await axios.delete(`/api/farmer/products/${productId}/`);
-        fetchProducts();
+        const updatedProducts = products.filter(p => p.id !== productId);
+        setProducts(updatedProducts);
+        localStorage.setItem('farmerProducts', JSON.stringify(updatedProducts));
       } catch (error) {
         console.error('Error deleting product:', error);
       }
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      description: '',
-      price: '',
-      category: '',
-      stock: '',
-      images: [],
-      delivery_time: '',
-      unit: 'kg',
-      minimum_order: '1',
-      organic: false,
-      seasonal: false,
-      harvest_date: '',
-      expiry_date: '',
-      storage_instructions: '',
-      nutritional_info: '',
-      discount: {
-        amount: 0,
-        type: 'percentage',
-        valid_until: null
-      }
-    });
-    setImagePreview([]);
-    setEditingProduct(null);
-  };
-
-  const filteredProducts = products
-    .filter(product => 
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      (selectedCategory === 'all' || product.category === selectedCategory)
-    );
-
-  const handleProductDetected = async (productData) => {
-    setIsLoading(true);
+  const handlePublishToggle = async (productId) => {
     try {
-      // Add the detected product to your products list
-      const response = await axios.post('/api/farmer/products/', productData);
-      setProducts([...products, response.data]);
-      setShowScanner(false);
+      const updatedProducts = products.map(p => 
+        p.id === productId ? { ...p, published: !p.published } : p
+      );
+      setProducts(updatedProducts);
+      localStorage.setItem('farmerProducts', JSON.stringify(updatedProducts));
     } catch (error) {
-      console.error('Error adding product:', error);
-      alert('Failed to add product. Please try again.');
-    } finally {
-      setIsLoading(false);
+      console.error('Error toggling publish status:', error);
     }
   };
 
+  const handleImageUpload = async (file, productId) => {
+    try {
+      // For testing, update locally with file reader
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProducts(products.map(p => 
+          p.id === productId ? { ...p, image: reader.result } : p
+        ));
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+    }
+  };
+
+  const sortProducts = (products) => {
+    return [...products].sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        case 'price-asc':
+          return a.price - b.price;
+        case 'price-desc':
+          return b.price - a.price;
+        case 'stock-asc':
+          return a.stock - b.stock;
+        case 'stock-desc':
+          return b.stock - a.stock;
+        default:
+          return 0;
+      }
+    });
+  };
+
+  const filteredProducts = sortProducts(
+    products.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === 'all' || 
+        product.category.toLowerCase() === selectedCategory.toLowerCase();
+      return matchesSearch && matchesCategory;
+    })
+  );
+
+  const renderProductCard = (product) => (
+    <div key={product.id} className="relative">
+      <FarmerProductCard
+        product={product}
+        onUpdate={handleProductUpdate}
+        onDelete={handleProductDelete}
+        onImageUpload={(file) => handleImageUpload(file, product.id)}
+      />
+      <button
+        onClick={() => handlePublishToggle(product.id)}
+        className={`absolute top-2 right-2 px-3 py-1 rounded-full text-sm font-medium ${
+          product.published 
+            ? 'bg-emerald-100 text-emerald-800'
+            : 'bg-gray-100 text-gray-800'
+        }`}
+      >
+        {product.published ? 'Published' : 'Draft'}
+      </button>
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-semibold">Product Management</h2>
-        <button
-          onClick={() => setShowScanner(!showScanner)}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-        >
-          {showScanner ? 'Close Scanner' : '📸 Add Product with Scanner'}
-        </button>
-      </div>
-
-      <div className="flex space-x-4">
-        <input
-          type="text"
-          placeholder="🔍 Search products..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 border rounded-lg px-4 py-2"
-        />
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="border rounded-lg px-4 py-2"
-        >
-          <option value="all">All Categories</option>
-          {categories.map(cat => (
-            <option key={cat.id} value={cat.id}>{cat.label}</option>
-          ))}
-        </select>
-      </div>
-
-      {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold">
-                {editingProduct ? 'Edit Product' : 'Add New Product'}
-              </h3>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header Section */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">My Products</h1>
+              <p className="text-gray-500">Manage your product inventory</p>
+            </div>
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => {
-                  setShowForm(false);
-                  resetForm();
-                }}
-                className="text-gray-500 hover:text-gray-700"
+                onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Toggle view mode"
               >
-                ✖️
+                {viewMode === 'grid' ? <List className="h-5 w-5" /> : <Grid className="h-5 w-5" />}
+              </button>
+              <button
+                onClick={fetchProducts}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Refresh products"
+              >
+                <RefreshCw className="h-5 w-5" />
               </button>
             </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Name
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Price per Unit
-                  </label>
-                  <div className="flex space-x-2">
-                    <input
-                      type="number"
-                      name="price"
-                      value={formData.price}
-                      onChange={handleInputChange}
-                      className="w-full border rounded-lg px-3 py-2"
-                      required
-                      min="0"
-                      step="0.01"
-                    />
-                    <select
-                      name="unit"
-                      value={formData.unit}
-                      onChange={handleInputChange}
-                      className="border rounded-lg px-3 py-2"
-                    >
-                      <option value="kg">per kg</option>
-                      <option value="piece">per piece</option>
-                      <option value="dozen">per dozen</option>
-                      <option value="bundle">per bundle</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Stock Available
-                  </label>
-                  <input
-                    type="number"
-                    name="stock"
-                    value={formData.stock}
-                    onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2"
-                    required
-                    min="0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category
-                  </label>
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2"
-                    required
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2"
-                    rows="4"
-                    required
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <div className="flex space-x-4">
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        name="organic"
-                        checked={formData.organic}
-                        onChange={handleInputChange}
-                        className="rounded text-green-600"
-                      />
-                      <span>Organic 🌱</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        name="seasonal"
-                        checked={formData.seasonal}
-                        onChange={handleInputChange}
-                        className="rounded text-green-600"
-                      />
-                      <span>Seasonal 🗓️</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Images
-                  </label>
-                  <input
-                    type="file"
-                    name="images"
-                    onChange={handleInputChange}
-                    className="w-full"
-                    multiple
-                    accept="image/*"
-                    required={!editingProduct}
-                  />
-                  {imagePreview.length > 0 && (
-                    <div className="mt-2 flex space-x-2 overflow-x-auto">
-                      {imagePreview.map((url, index) => (
-                        <img
-                          key={index}
-                          src={url}
-                          alt={`Preview ${index + 1}`}
-                          className="w-20 h-20 object-cover rounded"
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    resetForm();
-                  }}
-                  className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 
-                    ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {loading ? (
-                    <span className="flex items-center space-x-2">
-                      <div className="animate-spin">⌛</div>
-                      <span>Saving...</span>
-                    </span>
-                  ) : (
-                    editingProduct ? 'Update Product' : 'Add Product'
-                  )}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
 
-      {showScanner && (
-        <div className="bg-white rounded-lg shadow-md">
-          <ProductOCRScanner 
-            onProductDetected={handleProductDetected}
-          />
-        </div>
-      )}
-
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.map(product => (
-            <div
-              key={product.id}
-              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-            >
-              <div className="relative">
-                <img
-                  src={product.images[0]}
-                  alt={product.name}
-                  className="w-full h-48 object-cover"
-                />
-                {product.discount?.amount > 0 && (
-                  <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-sm">
-                    {product.discount.type === 'percentage' 
-                      ? `${product.discount.amount}% OFF`
-                      : `$${product.discount.amount} OFF`}
-                  </div>
-                )}
-              </div>
-              <div className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-lg">{product.name}</h3>
-                    <p className="text-gray-600">
-                      ${product.price}/{product.unit}
-                    </p>
-                  </div>
-                  <span className={`px-2 py-1 rounded-full text-sm ${
-                    product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-                  </span>
-                </div>
-                <p className="text-gray-600 mt-2 line-clamp-2">{product.description}</p>
-                <div className="mt-4 flex justify-between items-center">
-                  <div className="space-x-2">
-                    {product.organic && <span title="Organic">🌱</span>}
-                    {product.seasonal && <span title="Seasonal">🗓️</span>}
-                    {product.harvest_date && <span title={`Harvested: ${product.harvest_date}`}>🌾</span>}
-                  </div>
-                  <div className="space-x-2">
-                    <button
-                      onClick={() => handleEdit(product)}
-                      className="text-blue-600 hover:text-blue-700"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
+          {/* Search and Filter Section */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500"
+              />
             </div>
-          ))}
-        </div>
-      )}
-
-      {isLoading && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg">
-            <p className="text-lg">Processing product...</p>
+            <div className="flex gap-2">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white"
+              >
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white"
+              >
+                {sortOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
-      )}
+
+        {/* Products Display */}
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
+            <p className="mt-4 text-gray-500">Loading your products...</p>
+          </div>
+        ) : (
+          <div className={`
+            ${viewMode === 'grid' 
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+              : 'space-y-4'
+            }
+          `}>
+            <FarmerProductCard
+              isNew={true}
+              onCreate={handleCreateProduct}
+            />
+            {filteredProducts.map(renderProductCard)}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {filteredProducts.length === 0 && !loading && (
+          <div className="text-center py-12 bg-white rounded-xl shadow-sm">
+            <div className="mb-4">🌱</div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">No Products Found</h3>
+            <p className="text-gray-500">
+              {searchQuery || selectedCategory !== 'all' 
+                ? "Try adjusting your search or filter settings"
+                : "Start by adding your first product!"}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
