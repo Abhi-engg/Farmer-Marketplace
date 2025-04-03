@@ -8,6 +8,7 @@ import FarmerDashboard from './components/farmer/FarmerDashboard';
 import ProductListings from './components/products/ProductListings';
 import ProductDetails from './components/products/ProductDetails';
 import ShoppingCart from './components/cart/ShoppingCart';
+import TextExtractor from './components/TextExtractor';
 // Import Shop Components
 import ShopPage from './shop/ShopPage';
 import PropTypes from 'prop-types';
@@ -75,7 +76,7 @@ function App() {
           />
           <Route 
             path="/farmer/dashboard" 
-            element={isAuthenticated ? <FarmerDashboard /> : <Navigate to="/login" />} 
+            element={isAuthenticated ? <FarmerDashboard /> : <Navigate to="/login" />}  
           />
           <Route 
             path="/products" 
@@ -88,6 +89,10 @@ function App() {
           <Route 
             path="/cart" 
             element={isAuthenticated ? <ShoppingCart /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/text-extractor" 
+            element={isAuthenticated ? <TextExtractor /> : <Navigate to="/login" />} 
           />
           {/* Add Shop Routes */}
           <Route 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingBag, LogOut } from 'lucide-react';
+import { ShoppingBag, LogOut, FileText } from 'lucide-react';
 import axios from '../utils/axios';
 
 const Navbar = () => {
@@ -76,11 +76,31 @@ const Navbar = () => {
           </button>
 
           {/* Right Side Actions */}
-          <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigate('/text-extractor')}
+              className={`
+                px-4 py-2.5 rounded-full font-medium
+                transition-all duration-300 flex items-center space-x-2
+                ${isScrolled 
+                  ? 'text-green-600 hover:bg-green-50 hover:text-green-700' 
+                  : 'text-white hover:bg-white/20'
+                }
+              `}
+            >
+              <FileText 
+                size={20} 
+                className={`transition-transform group-hover:scale-110 ${
+                  isScrolled ? 'text-green-600' : 'text-white'
+                }`} 
+              />
+              <span>Text Extractor</span>
+            </button>
+            
             <button
               onClick={() => navigate('/shop')}
               className={`
-                px-6 py-2.5 rounded-full font-medium
+                px-4 py-2.5 rounded-full font-medium
                 transition-all duration-300 flex items-center space-x-2
                 ${isScrolled 
                   ? 'text-green-600 hover:bg-green-50 hover:text-green-700' 
@@ -100,7 +120,7 @@ const Navbar = () => {
             <button
               onClick={handleLogout}
               className={`
-                px-6 py-2.5 rounded-full font-medium
+                px-4 py-2.5 rounded-full font-medium
                 transition-all duration-300
                 flex items-center space-x-2
                 ${isScrolled
