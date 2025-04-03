@@ -19,7 +19,16 @@ from django.urls import path, include
 from . import views
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.generic import TemplateView
+from django.contrib.auth.views import LogoutView
+from django.shortcuts import redirect
+from django.http import JsonResponse
 
+def auth_complete(request):
+    """Handle OAuth completion and redirect"""
+    if request.user.is_authenticated:
+        return redirect('http://localhost:3000')  # Redirect to React frontend
+    return JsonResponse({'error': 'Authentication failed'}, status=401)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -30,4 +39,8 @@ urlpatterns = [
     path('api/check-auth/', views.check_auth, name='check_auth'),
     path('', include('social_django.urls', namespace='social')),
     path('api/', include('trial.urls')),
+    path('auth/complete/', auth_complete, name='auth-complete'),
+    path('logout/', LogoutView.as_view(
+        next_page='http://localhost:3000/login'
+    ), name='logout'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

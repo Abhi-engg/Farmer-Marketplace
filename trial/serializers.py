@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Note, Product, Cart, CartItem, Category, Banner, Favorite, Review
+from django.db import models
 
 class NoteSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -22,19 +23,37 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ['user']
 
 class ProductSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+    farmer_name = serializers.CharField(source='farmer')
     category_name = serializers.CharField(source='category.name', read_only=True)
-    category_icon = serializers.CharField(source='category.icon', read_only=True)
-    rating = serializers.FloatField(source='average_rating', read_only=True)
-    reviews = serializers.IntegerField(source='review_count', read_only=True)
+    average_rating = serializers.SerializerMethodField()
+    reviews_count = serializers.SerializerMethodField()
     is_favorite = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'farmer', 'location', 'price', 'image', 
-            'unit', 'category', 'category_name', 'category_icon',
-            'rating', 'reviews', 'is_favorite', 'created_at'
+            'id', 'name', 'description', 'price', 'unit',
+            'quantity', 'image_url', 'farmer_name', 'location',
+            'category', 'category_name', 'created_at', 'average_rating',
+            'reviews_count', 'is_favorite'
         ]
+
+    def get_image_url(self, obj):
+        if obj.image:
+            return obj.image.url
+        return None  # or return a default image URL
+
+    def get_average_rating(self, obj):
+        if hasattr(obj, 'reviews'):
+            avg = obj.reviews.aggregate(models.Avg('rating'))['rating__avg']
+            return round(float(avg), 1) if avg else 0.0
+        return 0.0
+
+    def get_reviews_count(self, obj):
+        if hasattr(obj, 'reviews'):
+            return obj.reviews.count()
+        return 0
 
     def get_is_favorite(self, obj):
         request = self.context.get('request')

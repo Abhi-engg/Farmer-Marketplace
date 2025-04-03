@@ -1,8 +1,16 @@
 from django.shortcuts import render, redirect
 from rest_framework import viewsets, status, filters
+<<<<<<< HEAD
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.decorators import api_view, permission_classes, action, parser_classes
+=======
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
+from rest_framework.decorators import api_view, permission_classes, action
+>>>>>>> f4883d3ea0876379fa3a3a8245417da3249b3425
 from django.contrib.auth.models import User
+from django.contrib.auth import logout
+from django.shortcuts import redirect
+from rest_framework.views import APIView
 from .models import Note, Cart, CartItem, Product, Category, Banner, Favorite, Review
 from .serializers import (
     NoteSerializer, CartSerializer, CartItemSerializer, 
@@ -13,6 +21,7 @@ from rest_framework.response import Response
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from decimal import Decimal
+<<<<<<< HEAD
 from django.db.models import Q, Avg
 import google.generativeai as genai
 import base64
@@ -35,6 +44,9 @@ import logging
 
 # Set up logger
 logger = logging.getLogger(__name__)
+=======
+from django.db.models import Q, Avg, Count
+>>>>>>> f4883d3ea0876379fa3a3a8245417da3249b3425
 
 # Create your views here.
 
@@ -184,6 +196,27 @@ class CartViewSet(viewsets.ModelViewSet):
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    permission_classes = [AllowAny]  # Allow public access to categories
+
+    @action(detail=False, methods=['get'])
+    def with_stats(self, request):
+        """Get categories with their statistics"""
+        categories = Category.objects.annotate(
+            products_count=Count('products'),
+            avg_rating=Avg('products__reviews__rating')
+        )
+        
+        data = []
+        for category in categories:
+            data.append({
+                'id': category.id,
+                'name': category.name,
+                'products_count': category.products_count,
+                'avg_rating': round(category.avg_rating or 4.0, 1),
+                'image_url': category.image.url if hasattr(category, 'image') and category.image else None
+            })
+        
+        return Response(data)
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
@@ -192,16 +225,18 @@ class ProductViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'farmer', 'location', 'category__name']
     ordering_fields = ['created_at', 'price', 'name']
     ordering = ['-created_at']
+    permission_classes = [IsAuthenticatedOrReadOnly]  # Allow public read access
 
     def get_queryset(self):
-        queryset = Product.objects.all()
-        category = self.request.query_params.get('category', None)
-        search = self.request.query_params.get('search', None)
-        min_rating = self.request.query_params.get('min_rating', None)
+        queryset = Product.objects.all().select_related('category')
         
+        # Category filter
+        category = self.request.query_params.get('category', None)
         if category and category.lower() != 'all':
             queryset = queryset.filter(category__name__iexact=category)
         
+        # Search filter
+        search = self.request.query_params.get('search', None)
         if search:
             queryset = queryset.filter(
                 Q(name__icontains=search) |
@@ -210,6 +245,16 @@ class ProductViewSet(viewsets.ModelViewSet):
                 Q(category__name__icontains=search)
             )
 
+        # Price range filter
+        min_price = self.request.query_params.get('min_price', None)
+        max_price = self.request.query_params.get('max_price', None)
+        if min_price:
+            queryset = queryset.filter(price__gte=float(min_price))
+        if max_price:
+            queryset = queryset.filter(price__lte=float(max_price))
+
+        # Rating filter
+        min_rating = self.request.query_params.get('min_rating', None)
         if min_rating:
             try:
                 min_rating = float(min_rating)
@@ -218,8 +263,16 @@ class ProductViewSet(viewsets.ModelViewSet):
                 ).filter(avg_rating__gte=min_rating)
             except ValueError:
                 pass
+
+        # Availability filter
+        in_stock = self.request.query_params.get('in_stock', None)
+        if in_stock and in_stock.lower() == 'true':
+            queryset = queryset.filter(quantity__gt=0)
         
-        return queryset
+        return queryset.annotate(
+            average_rating=Avg('reviews__rating'),
+            review_count=Count('reviews')
+        )
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -269,6 +322,89 @@ class ProductViewSet(viewsets.ModelViewSet):
         reviews = product.reviews.all()
         serializer = ReviewSerializer(reviews, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def add_to_cart(self, request, pk=None):
+        """Quick add to cart with quantity 1"""
+        product = self.get_object()
+        cart_viewset = CartViewSet()
+        cart_viewset.request = request
+        cart = cart_viewset.get_or_create_active_cart()
+        
+        try:
+            cart_item, created = CartItem.objects.get_or_create(
+                cart=cart,
+                product=product,
+                defaults={'quantity': 1}
+            )
+            
+            if not created:
+                cart_item.quantity += 1
+                cart_item.save()
+
+            return Response({
+                'status': 'success',
+                'message': f'Added {product.name} to cart'
+            })
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=True, methods=['post'])
+    def buy_now(self, request, pk=None):
+        """Quick purchase single item"""
+        product = self.get_object()
+        cart_viewset = CartViewSet()
+        cart_viewset.request = request
+        
+        # Clear existing cart
+        cart = cart_viewset.get_or_create_active_cart()
+        cart.items.all().delete()
+        
+        # Add this item
+        CartItem.objects.create(
+            cart=cart,
+            product=product,
+            quantity=1
+        )
+        
+        return Response({
+            'status': 'success',
+            'message': 'Ready for checkout',
+            'cart_id': cart.id
+        })
+
+    @action(detail=False, methods=['get'])
+    def featured(self, request):
+        """Get featured products for the home page"""
+        # Get products with high ratings and reviews
+        featured_products = Product.objects.annotate(
+            avg_rating=Avg('reviews__rating'),
+            review_count=Count('reviews')
+        ).filter(
+            avg_rating__gte=4.0,  # Products with rating >= 4.0
+            review_count__gte=1   # Products with at least 1 review
+        ).order_by('-avg_rating', '-created_at')[:6]  # Get top 6 products
+        
+        serializer = self.get_serializer(featured_products, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Get product statistics for the home page"""
+        total_products = Product.objects.count()
+        total_farmers = Product.objects.values('farmer').distinct().count()
+        total_categories = Category.objects.count()
+        avg_savings = 25  # Mock value, you can calculate this based on your business logic
+
+        return Response({
+            'total_products': total_products,
+            'total_farmers': total_farmers,
+            'total_categories': total_categories,
+            'avg_savings': avg_savings
+        })
 
 class FavoriteViewSet(viewsets.ModelViewSet):
     serializer_class = FavoriteSerializer
@@ -336,6 +472,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+<<<<<<< HEAD
 class CustomAuthToken(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data,
@@ -562,3 +699,176 @@ def gemini_diagnostic(request):
 def gemini_test_page(request):
     """Render a simple HTML page to test Gemini API directly"""
     return render(request, 'gemini_test.html')
+=======
+@api_view(['GET'])
+def farmers_locations(request):
+    """Get all farmer locations for the map"""
+    # Get unique farmers from products
+    farmers = Product.objects.values(
+        'farmer', 'location'
+    ).annotate(
+        products_count=Count('id'),
+        avg_rating=Avg('reviews__rating')
+    ).filter(
+        products_count__gt=0  # Only farmers with products
+    )
+
+    # Add mock coordinates for demonstration
+    # In real app, you would store these in the database
+    import random
+    
+    # India's approximate bounding box
+    INDIA_BOUNDS = {
+        'lat': (8.4, 37.6),  # India's latitude range
+        'lng': (68.7, 97.25)  # India's longitude range
+    }
+
+    farmer_data = []
+    for farmer in farmers:
+        # Generate random but realistic-looking coordinates within India
+        lat = random.uniform(INDIA_BOUNDS['lat'][0], INDIA_BOUNDS['lat'][1])
+        lng = random.uniform(INDIA_BOUNDS['lng'][0], INDIA_BOUNDS['lng'][1])
+        
+        farmer_data.append({
+            'id': len(farmer_data) + 1,
+            'name': farmer['farmer'],
+            'farm_name': f"{farmer['farmer']}'s Farm",
+            'location': farmer['location'],
+            'latitude': round(lat, 6),
+            'longitude': round(lng, 6),
+            'products_count': farmer['products_count'],
+            'rating': round(farmer['avg_rating'] or 4.0, 1),  # Default 4.0 if no ratings
+            'region': farmer['location'].split(',')[-1].strip()  # Use last part of location as region
+        })
+
+    return Response(farmer_data)
+
+@api_view(['POST'])
+def subscribe_newsletter(request):
+    """Handle newsletter subscriptions"""
+    email = request.data.get('email')
+    if not email:
+        return Response(
+            {'error': 'Email is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # In a real app, you would save this to a Newsletter model
+    # For now, just return success
+    return Response({
+        'status': 'success',
+        'message': 'Successfully subscribed to newsletter'
+    })
+
+@api_view(['GET'])
+def home_stats(request):
+    """Get combined statistics for the home page"""
+    total_farmers = Product.objects.values('farmer').distinct().count()
+    active_regions = Product.objects.values('location').distinct().count()
+    total_products = Product.objects.count()
+    total_categories = Category.objects.count()
+    
+    # Calculate mock statistics
+    customer_satisfaction = 4.5  # Mock value
+    delivery_success_rate = 98.5  # Mock value
+    
+    return Response({
+        'farmers_count': total_farmers,
+        'regions_count': active_regions,
+        'products_count': total_products,
+        'categories_count': total_categories,
+        'customer_satisfaction': customer_satisfaction,
+        'delivery_success_rate': delivery_success_rate,
+        'features': [
+            {
+                'title': 'Direct Connection',
+                'description': 'Connect directly with local farmers, eliminating middlemen',
+                'icon': 'users'
+            },
+            {
+                'title': 'Fresh Produce',
+                'description': 'Get fresh, seasonal produce directly from farms',
+                'icon': 'leaf'
+            },
+            {
+                'title': 'Fair Prices',
+                'description': 'Better prices for both farmers and consumers',
+                'icon': 'trending-up'
+            }
+        ],
+        'trust_indicators': [
+            {
+                'title': 'Secure Payments',
+                'description': '100% secure transaction',
+                'icon': 'shield'
+            },
+            {
+                'title': 'Fast Delivery',
+                'description': 'Same day delivery available',
+                'icon': 'truck'
+            },
+            {
+                'title': 'Verified Farmers',
+                'description': 'All farmers are verified',
+                'icon': 'users'
+            }
+        ]
+    })
+
+@api_view(['GET'])
+def how_it_works(request):
+    """Get the 'How It Works' steps"""
+    return Response([
+        {
+            'number': '01',
+            'title': 'Browse',
+            'description': 'Explore fresh produce from local farmers'
+        },
+        {
+            'number': '02',
+            'title': 'Select',
+            'description': 'Choose your favorite products'
+        },
+        {
+            'number': '03',
+            'title': 'Order',
+            'description': 'Place your order with secure payment'
+        },
+        {
+            'number': '04',
+            'title': 'Receive',
+            'description': 'Get fresh delivery to your doorstep'
+        }
+    ])
+
+@api_view(['GET'])
+def auth_status(request):
+    """Check if user is authenticated and return user data"""
+    if request.user.is_authenticated:
+        return Response({
+            'isAuthenticated': True,
+            'user': {
+                'id': request.user.id,
+                'username': request.user.username,
+                'email': request.user.email,
+                'first_name': request.user.first_name,
+                'last_name': request.user.last_name,
+            }
+        })
+    return Response({'isAuthenticated': False})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    """Logout the user and clear session"""
+    logout(request)
+    return Response({'message': 'Successfully logged out'})
+
+class GoogleLoginFailure(APIView):
+    """Handle Google login failures"""
+    def get(self, request):
+        return Response({
+            'error': 'Google login failed',
+            'message': 'Unable to log in with Google. Please try again.'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+>>>>>>> f4883d3ea0876379fa3a3a8245417da3249b3425
