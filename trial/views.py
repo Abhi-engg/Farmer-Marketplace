@@ -697,7 +697,7 @@ def gemini_diagnostic(request):
 def gemini_test_page(request):
     """Render a simple HTML page to test Gemini API directly"""
     return render(request, 'gemini_test.html')
-=======
+
 @api_view(['GET'])
 def farmers_locations(request):
     """Get all farmer locations for the map"""
@@ -869,3 +869,4 @@ class GoogleLoginFailure(APIView):
             'error': 'Google login failed',
             'message': 'Unable to log in with Google. Please try again.'
         }, status=status.HTTP_401_UNAUTHORIZED)
+    
