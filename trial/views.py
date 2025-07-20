@@ -1,12 +1,10 @@
 from django.shortcuts import render, redirect
 from rest_framework import viewsets, status, filters
-<<<<<<< HEAD
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.decorators import api_view, permission_classes, action, parser_classes
-=======
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
 from rest_framework.decorators import api_view, permission_classes, action
->>>>>>> f4883d3ea0876379fa3a3a8245417da3249b3425
+
 from django.contrib.auth.models import User
 from django.contrib.auth import logout
 from django.shortcuts import redirect
@@ -21,7 +19,7 @@ from rest_framework.response import Response
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from decimal import Decimal
-<<<<<<< HEAD
+
 from django.db.models import Q, Avg
 import google.generativeai as genai
 import base64
@@ -46,7 +44,7 @@ import logging
 logger = logging.getLogger(__name__)
 =======
 from django.db.models import Q, Avg, Count
->>>>>>> f4883d3ea0876379fa3a3a8245417da3249b3425
+
 
 # Create your views here.
 
@@ -472,7 +470,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-<<<<<<< HEAD
+
 class CustomAuthToken(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data,
@@ -871,4 +869,3 @@ class GoogleLoginFailure(APIView):
             'error': 'Google login failed',
             'message': 'Unable to log in with Google. Please try again.'
         }, status=status.HTTP_401_UNAUTHORIZED)
->>>>>>> f4883d3ea0876379fa3a3a8245417da3249b3425
